@@ -1,6 +1,9 @@
+import { randomUUID } from 'node:crypto';
+
 import gql from 'graphql-tag';
 import { FIELD_RESTRICTED_ADDITIONAL_PERMISSIONS_REQUIRED } from 'twenty-shared/constants';
 import {
+  CalendarChannelVisibility,
   ConnectedAccountProvider,
   MessageChannelVisibility,
 } from 'twenty-shared/types';
@@ -8,6 +11,7 @@ import {
 import { SEED_APPLE_WORKSPACE_ID } from 'src/engine/workspace-manager/dev-seeder/core/constants/seeder-workspaces.constant';
 
 import { gmailMessage } from 'test/integration/google/mocks/gmail-message.util';
+import { googleCalendarEvent } from 'test/integration/google/mocks/google-calendar-event.util';
 import { setupGoogleMock } from 'test/integration/google/mocks/setup-google-mock.util';
 import { signUpInWorkspaceAndGetAccessToken } from 'test/integration/graphql/utils/sign-up-in-workspace-and-get-access-token.util';
 import { makeMetadataAPIRequest } from 'test/integration/metadata/suites/utils/make-metadata-api-request.util';
@@ -19,8 +23,11 @@ import {
 import {
   deleteConnectedAccount,
   getDataOrThrow,
+  updateCalendarChannel,
   updateMessageChannel,
 } from 'test/integration/utils/query-messaging.util';
+import { runCalendarChannelEventsImport } from 'test/integration/utils/run-calendar-channel-events-import.util';
+import { runCalendarChannelListFetch } from 'test/integration/utils/run-calendar-channel-list-fetch.util';
 import { runMessageChannelSync } from 'test/integration/utils/run-message-channel-sync.util';
 import { waitForAllJobsToFinish } from 'test/integration/utils/wait-for-all-jobs-to-finish.util';
 
@@ -63,13 +70,15 @@ const deleteUserFromWorkspace = async (workspaceMemberId: string) => {
 
 describe('Messaging connected account custody on member removal (integration)', () => {
   const inbox = [gmailMessage(), gmailMessage()];
+  const eventId = `google-calendar-event-${randomUUID()}`;
 
-  setupGoogleMock({ handle: HANDLE, inbox });
+  const gmail = setupGoogleMock({ handle: HANDLE, inbox });
 
   let channel: Awaited<ReturnType<typeof connectMessagingAccount>>;
   let departingUserWorkspaceId: string;
   let adminUserWorkspaceId: string;
   let messageIds: string[];
+  let calendarEventIds: string[];
 
   beforeAll(async () => {
     const departingMemberAccessToken = await signUpInWorkspaceAndGetAccessToken(
@@ -89,8 +98,25 @@ describe('Messaging connected account custody on member removal (integration)', 
 
     await runMessageChannelSync(channel.channelId);
 
+    gmail.serveCalendarEvents([
+      googleCalendarEvent({
+        id: eventId,
+        attendees: [
+          { email: `organizer-${eventId}@example.com`, organizer: true },
+          { email: `attendee-${eventId}@example.com` },
+        ],
+      }),
+    ]);
+
+    await runCalendarChannelListFetch(channel.calendarChannelId);
+    await runCalendarChannelEventsImport(channel.calendarChannelId);
+
     await updateMessageChannel(channel.channelId, {
       visibility: MessageChannelVisibility.METADATA,
+    });
+
+    await updateCalendarChannel(channel.calendarChannelId, {
+      visibility: CalendarChannelVisibility.METADATA,
     });
 
     const associations = await findRecordNodesByFilter<{ messageId: string }>(
@@ -103,6 +129,21 @@ describe('Messaging connected account custody on member removal (integration)', 
     messageIds = associations.map((association) => association.messageId);
 
     expect(messageIds).toHaveLength(inbox.length);
+
+    const eventAssociations = await findRecordNodesByFilter<{
+      calendarEventId: string;
+    }>(
+      'calendarChannelEventAssociation',
+      'calendarChannelEventAssociations',
+      'calendarEventId',
+      { calendarChannelId: { eq: channel.calendarChannelId } },
+    );
+
+    calendarEventIds = eventAssociations.map(
+      (association) => association.calendarEventId,
+    );
+
+    expect(calendarEventIds).toHaveLength(1);
 
     const [departingWorkspaceMember] = await findRecordNodesByFilter<{
       id: string;
@@ -133,6 +174,30 @@ describe('Messaging connected account custody on member removal (integration)', 
         { messageChannelId: { eq: channel.channelId } },
       ),
     ).toHaveLength(inbox.length);
+  }, 60000);
+
+  it('keeps the imported calendar events when the member leaves the workspace', async () => {
+    expect(
+      await findRecordIdsByFilter('calendarEvent', 'calendarEvents', {
+        id: { in: calendarEventIds },
+      }),
+    ).toHaveLength(calendarEventIds.length);
+
+    expect(
+      await findRecordIdsByFilter(
+        'calendarChannelEventAssociation',
+        'calendarChannelEventAssociations',
+        { calendarChannelId: { eq: channel.calendarChannelId } },
+      ),
+    ).toHaveLength(calendarEventIds.length);
+
+    expect(
+      await findRecordIdsByFilter(
+        'calendarEventParticipant',
+        'calendarEventParticipants',
+        { calendarEventId: { in: calendarEventIds } },
+      ),
+    ).not.toHaveLength(0);
   }, 60000);
 
   it('hands custody to the admin without reassigning the mailbox subject', async () => {
@@ -178,6 +243,25 @@ describe('Messaging connected account custody on member removal (integration)', 
         FIELD_RESTRICTED_ADDITIONAL_PERMISSIONS_REQUIRED,
       );
       expect(message.text).toBe(
+        FIELD_RESTRICTED_ADDITIONAL_PERMISSIONS_REQUIRED,
+      );
+    }
+
+    const calendarEvents = await findRecordNodesByFilter<{
+      id: string;
+      title: string;
+    }>(
+      'calendarEvent',
+      'calendarEvents',
+      `id
+        title`,
+      { id: { in: calendarEventIds } },
+    );
+
+    expect(calendarEvents).toHaveLength(calendarEventIds.length);
+
+    for (const calendarEvent of calendarEvents) {
+      expect(calendarEvent.title).toBe(
         FIELD_RESTRICTED_ADDITIONAL_PERMISSIONS_REQUIRED,
       );
     }
