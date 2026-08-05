@@ -5,7 +5,7 @@ import groupBy from 'lodash.groupby';
 import { FIELD_RESTRICTED_ADDITIONAL_PERMISSIONS_REQUIRED } from 'twenty-shared/constants';
 import { MessageChannelVisibility } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { ConnectedAccountEntity } from 'src/engine/metadata-modules/connected-account/entities/connected-account.entity';
@@ -121,6 +121,7 @@ export class ApplyMessagesVisibilityRestrictionsService {
                 await this.connectedAccountRepository.find({
                   where: {
                     userWorkspaceId: userWorkspace.id,
+                    custodianUserWorkspaceId: IsNull(),
                     workspaceId,
                     messageChannels: {
                       id: In(messageChannels.map((channel) => channel.id)),

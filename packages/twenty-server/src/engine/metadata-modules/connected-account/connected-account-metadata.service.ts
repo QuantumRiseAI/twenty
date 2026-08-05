@@ -98,11 +98,43 @@ export class ConnectedAccountMetadataService {
       );
     }
 
-    const isManageableByCaller =
+    if (
+      !isConnectedAccountUsableByCaller({ connectedAccount, userWorkspaceId })
+    ) {
+      throw new ConnectedAccountException(
+        `Connected account ${id} does not belong to user workspace ${userWorkspaceId}`,
+        ConnectedAccountExceptionCode.CONNECTED_ACCOUNT_OWNERSHIP_VIOLATION,
+      );
+    }
+
+    return connectedAccount;
+  }
+
+  async verifyLifecycleControl({
+    id,
+    userWorkspaceId,
+    workspaceId,
+  }: {
+    id: string;
+    userWorkspaceId: string;
+    workspaceId: string;
+  }): Promise<ConnectedAccountEntity> {
+    const connectedAccount = await this.repository.findOne({
+      where: { id, workspaceId },
+    });
+
+    if (!connectedAccount) {
+      throw new ConnectedAccountException(
+        `Connected account ${id} not found`,
+        ConnectedAccountExceptionCode.CONNECTED_ACCOUNT_NOT_FOUND,
+      );
+    }
+
+    const isControlledByCaller =
       isConnectedAccountUsableByCaller({ connectedAccount, userWorkspaceId }) ||
       connectedAccount.custodianUserWorkspaceId === userWorkspaceId;
 
-    if (!isManageableByCaller) {
+    if (!isControlledByCaller) {
       throw new ConnectedAccountException(
         `Connected account ${id} does not belong to user workspace ${userWorkspaceId}`,
         ConnectedAccountExceptionCode.CONNECTED_ACCOUNT_OWNERSHIP_VIOLATION,
@@ -187,14 +219,11 @@ export class ConnectedAccountMetadataService {
       return;
     }
 
-    if (isDefined(toUserWorkspaceId)) {
-      await this.repository.update(
-        { id: In(connectedAccounts.map((account) => account.id)), workspaceId },
-        { custodianUserWorkspaceId: toUserWorkspaceId },
-      );
-    }
-
-    await this.disconnectAccounts({ connectedAccounts, workspaceId });
+    await this.disconnectAccounts({
+      connectedAccounts,
+      workspaceId,
+      custodianUserWorkspaceId: toUserWorkspaceId,
+    });
   }
 
   async disconnect({
@@ -219,9 +248,11 @@ export class ConnectedAccountMetadataService {
   private async disconnectAccounts({
     connectedAccounts,
     workspaceId,
+    custodianUserWorkspaceId,
   }: {
     connectedAccounts: ConnectedAccountEntity[];
     workspaceId: string;
+    custodianUserWorkspaceId?: string;
   }): Promise<void> {
     const connectedAccountIds = connectedAccounts.map((account) => account.id);
 
@@ -237,6 +268,9 @@ export class ConnectedAccountMetadataService {
           accessToken: null,
           refreshToken: null,
           connectionParameters: null,
+          ...(isDefined(custodianUserWorkspaceId)
+            ? { custodianUserWorkspaceId }
+            : {}),
         },
       );
 

@@ -136,6 +136,7 @@ import { AddOpenRecordInToObjectMetadataFastInstanceCommand } from 'src/database
 import { CreateUserSessionCoreTableFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-27/2-27-instance-command-fast-1785518325511-create-user-session-core-table';
 import { CreateApplicationAuthorizationCoreTableFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-27/2-27-instance-command-fast-1785681272278-create-application-authorization-core-table';
 import { AddCustodianUserWorkspaceIdToConnectedAccountFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-28/2-28-instance-command-fast-1785927669595-add-custodian-user-workspace-id-to-connected-account';
+import { BackfillConnectedAccountCustodianSlowInstanceCommand } from 'src/database/commands/upgrade-version-command/2-28/2-28-instance-command-slow-1785927669596-backfill-connected-account-custodian';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
@@ -274,4 +275,5 @@ export const INSTANCE_COMMANDS = [
   CreateUserSessionCoreTableFastInstanceCommand,
   CreateApplicationAuthorizationCoreTableFastInstanceCommand,
   AddCustodianUserWorkspaceIdToConnectedAccountFastInstanceCommand,
+  BackfillConnectedAccountCustodianSlowInstanceCommand,
 ];

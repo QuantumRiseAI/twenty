@@ -5,7 +5,7 @@ import groupBy from 'lodash.groupby';
 import { FIELD_RESTRICTED_ADDITIONAL_PERMISSIONS_REQUIRED } from 'twenty-shared/constants';
 import { CalendarChannelVisibility } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { CalendarChannelEntity } from 'src/engine/metadata-modules/calendar-channel/entities/calendar-channel.entity';
@@ -110,6 +110,7 @@ export class ApplyCalendarEventsVisibilityRestrictionsService {
                       id: In(calendarChannels.map((channel) => channel.id)),
                     },
                     userWorkspaceId: userWorkspace.id,
+                    custodianUserWorkspaceId: IsNull(),
                     workspaceId,
                   },
                 });

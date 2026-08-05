@@ -21,7 +21,7 @@ import {
   IconDotsVertical,
   IconMail,
   IconPlayerPlay,
-  IconPlugX,
+  IconLinkOff,
   IconRefresh,
   IconTrash,
 } from 'twenty-ui/icon';
@@ -150,7 +150,7 @@ export const SettingsAccountsRowDropdownMenu = ({
               )}
               <MenuItem
                 accent="danger"
-                LeftIcon={IconPlugX}
+                LeftIcon={IconLinkOff}
                 text={t`Disconnect account`}
                 onClick={() => {
                   closeDropdown(dropdownId);
