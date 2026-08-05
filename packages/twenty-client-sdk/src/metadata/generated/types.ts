@@ -8827,6 +8827,15 @@ export default {
                     ]
                 }
             ],
+            "disconnectConnectedAccount": [
+                247,
+                {
+                    "id": [
+                        4,
+                        "UUID!"
+                    ]
+                }
+            ],
             "deleteConnectedAccount": [
                 247,
                 {

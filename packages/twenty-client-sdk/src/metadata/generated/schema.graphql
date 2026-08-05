@@ -3593,6 +3593,7 @@ type Mutation {
   createEmailingDomain(input: CreateEmailingDomainInput!): EmailingDomain!
   deleteEmailingDomain(id: String!): Boolean!
   verifyEmailingDomain(id: String!): EmailingDomain!
+  disconnectConnectedAccount(id: UUID!): ConnectedAccountPublicDTO!
   deleteConnectedAccount(id: UUID!): ConnectedAccountPublicDTO!
   runAgent(input: RunAgentInput!): RunAgentResult!
   createWebhook(input: CreateWebhookInput!): Webhook!
