@@ -21,6 +21,7 @@ import {
   IconDotsVertical,
   IconMail,
   IconPlayerPlay,
+  IconPlugX,
   IconRefresh,
   IconTrash,
 } from 'twenty-ui/icon';
@@ -28,6 +29,7 @@ import { LightIconButton } from 'twenty-ui/input';
 import { MenuItem } from 'twenty-ui/navigation';
 import { useNavigateSettings } from '~/hooks/useNavigateSettings';
 import { DELETE_CONNECTED_ACCOUNT } from '../graphql/mutations/deleteConnectedAccount';
+import { DISCONNECT_CONNECTED_ACCOUNT } from '../graphql/mutations/disconnectConnectedAccount';
 
 type SettingsAccountsRowDropdownMenuProps = {
   account: ConnectedAccount;
@@ -38,6 +40,7 @@ export const SettingsAccountsRowDropdownMenu = ({
 }: SettingsAccountsRowDropdownMenuProps) => {
   const dropdownId = `settings-account-row-${account.id}`;
   const deleteAccountModalId = `delete-account-modal-${account.id}`;
+  const disconnectAccountModalId = `disconnect-account-modal-${account.id}`;
   const accountHandle = account.handle;
 
   const { t } = useLingui();
@@ -49,6 +52,9 @@ export const SettingsAccountsRowDropdownMenu = ({
   const apolloClient = useApolloClient();
   const [deleteConnectedAccountMutation] = useMutation(
     DELETE_CONNECTED_ACCOUNT,
+  );
+  const [disconnectConnectedAccountMutation] = useMutation(
+    DISCONNECT_CONNECTED_ACCOUNT,
   );
   const { triggerProviderReconnect } = useTriggerProviderReconnect();
 
@@ -64,6 +70,13 @@ export const SettingsAccountsRowDropdownMenu = ({
 
   const deleteAccount = async () => {
     await deleteConnectedAccountMutation({
+      variables: { id: account.id },
+    });
+    await apolloClient.refetchQueries({ include: 'active' });
+  };
+
+  const disconnectAccount = async () => {
+    await disconnectConnectedAccountMutation({
       variables: { id: account.id },
     });
     await apolloClient.refetchQueries({ include: 'active' });
@@ -137,8 +150,17 @@ export const SettingsAccountsRowDropdownMenu = ({
               )}
               <MenuItem
                 accent="danger"
+                LeftIcon={IconPlugX}
+                text={t`Disconnect account`}
+                onClick={() => {
+                  closeDropdown(dropdownId);
+                  openModal(disconnectAccountModalId);
+                }}
+              />
+              <MenuItem
+                accent="danger"
                 LeftIcon={IconTrash}
-                text={t`Remove account`}
+                text={t`Delete all data`}
                 onClick={() => {
                   closeDropdown(dropdownId);
                   openModal(deleteAccountModalId);
@@ -147,6 +169,18 @@ export const SettingsAccountsRowDropdownMenu = ({
             </DropdownMenuItemsContainer>
           </DropdownContent>
         }
+      />
+      <ConfirmationModal
+        modalInstanceId={disconnectAccountModalId}
+        title={t`Disconnect account`}
+        subtitle={
+          <Trans>
+            This account ({accountHandle}) will stop syncing. Emails and events
+            already imported will remain in the CRM.
+          </Trans>
+        }
+        onConfirmClick={disconnectAccount}
+        confirmButtonText={t`Disconnect account`}
       />
       <ConfirmationModal
         modalInstanceId={deleteAccountModalId}

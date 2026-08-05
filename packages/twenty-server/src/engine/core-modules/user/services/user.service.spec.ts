@@ -106,7 +106,7 @@ describe('UserService', () => {
         {
           provide: ConnectedAccountMetadataService,
           useValue: {
-            transferOwnership: jest.fn(),
+            transferCustody: jest.fn(),
           },
         },
         {

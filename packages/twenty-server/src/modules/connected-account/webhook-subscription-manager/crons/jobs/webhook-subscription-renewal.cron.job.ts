@@ -102,6 +102,7 @@ export class WebhookSubscriptionRenewalCronJob {
   ): Promise<StaleChannel[]> {
     const workspaceScope = {
       workspaceId: In(activeWorkspaceIds),
+      isSyncEnabled: true,
       connectedAccount: { authFailedAt: IsNull() },
     };
     const renewalThreshold = new Date(

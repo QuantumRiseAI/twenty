@@ -20,6 +20,7 @@ type ConnectMessagingAccountInput = {
   provider: ConnectedAccountProvider;
   handle: string;
   skipChannelConfiguration?: boolean;
+  accessToken?: string;
 };
 
 type ConnectMessagingAccountResult = {
@@ -35,18 +36,23 @@ const OAUTH_CALLBACK_PATH: Partial<Record<ConnectedAccountProvider, string>> = {
   [ConnectedAccountProvider.MICROSOFT]: '/auth/microsoft-apis/get-access-token',
 };
 
-const generateTransientToken = async (): Promise<string> => {
-  const response = await makeMetadataAPIRequest({
-    query: gql`
-      mutation GenerateTransientToken {
-        generateTransientToken {
-          transientToken {
-            token
+const generateTransientToken = async (
+  accessToken?: string,
+): Promise<string> => {
+  const response = await makeMetadataAPIRequest(
+    {
+      query: gql`
+        mutation GenerateTransientToken {
+          generateTransientToken {
+            transientToken {
+              token
+            }
           }
         }
-      }
-    `,
-  });
+      `,
+    },
+    accessToken,
+  );
 
   const data = getDataOrThrow(response) as {
     generateTransientToken: { transientToken: { token: string } };
@@ -59,6 +65,7 @@ export const connectMessagingAccount = async ({
   provider,
   handle,
   skipChannelConfiguration = true,
+  accessToken,
 }: ConnectMessagingAccountInput): Promise<ConnectMessagingAccountResult> => {
   const callbackPath = OAUTH_CALLBACK_PATH[provider];
 
@@ -67,7 +74,7 @@ export const connectMessagingAccount = async ({
   }
 
   const state = JSON.stringify({
-    transientToken: await generateTransientToken(),
+    transientToken: await generateTransientToken(accessToken),
     messageVisibility: MessageChannelVisibility.SHARE_EVERYTHING,
     calendarVisibility: CalendarChannelVisibility.SHARE_EVERYTHING,
     skipMessageChannelConfiguration: skipChannelConfiguration,
@@ -79,7 +86,7 @@ export const connectMessagingAccount = async ({
 
   await waitForAllJobsToFinish();
 
-  const connectedChannel = (await queryMessageChannels()).find(
+  const connectedChannel = (await queryMessageChannels(accessToken)).find(
     (channel) => channel.handle === handle,
   );
 
@@ -91,6 +98,7 @@ export const connectMessagingAccount = async ({
 
   const [calendarChannel] = await queryCalendarChannels(
     connectedChannel.connectedAccountId,
+    accessToken,
   );
 
   if (!calendarChannel) {

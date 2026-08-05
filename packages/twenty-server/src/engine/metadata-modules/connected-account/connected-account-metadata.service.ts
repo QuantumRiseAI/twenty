@@ -47,7 +47,10 @@ export class ConnectedAccountMetadataService {
     workspaceId: string;
   }): Promise<ConnectedAccountEntity[]> {
     return this.repository.find({
-      where: { userWorkspaceId, workspaceId },
+      where: [
+        { userWorkspaceId, workspaceId },
+        { custodianUserWorkspaceId: userWorkspaceId, workspaceId },
+      ],
     });
   }
 
@@ -95,9 +98,11 @@ export class ConnectedAccountMetadataService {
       );
     }
 
-    if (
-      !isConnectedAccountUsableByCaller({ connectedAccount, userWorkspaceId })
-    ) {
+    const isManageableByCaller =
+      isConnectedAccountUsableByCaller({ connectedAccount, userWorkspaceId }) ||
+      connectedAccount.custodianUserWorkspaceId === userWorkspaceId;
+
+    if (!isManageableByCaller) {
       throw new ConnectedAccountException(
         `Connected account ${id} does not belong to user workspace ${userWorkspaceId}`,
         ConnectedAccountExceptionCode.CONNECTED_ACCOUNT_OWNERSHIP_VIOLATION,
@@ -165,13 +170,13 @@ export class ConnectedAccountMetadataService {
     return this.repository.findOneOrFail({ where: { id, workspaceId } });
   }
 
-  async transferOwnership({
+  async transferCustody({
     fromUserWorkspaceId,
     toUserWorkspaceId,
     workspaceId,
   }: {
     fromUserWorkspaceId: string;
-    toUserWorkspaceId: string;
+    toUserWorkspaceId?: string;
     workspaceId: string;
   }): Promise<void> {
     const connectedAccounts = await this.repository.find({
@@ -182,14 +187,53 @@ export class ConnectedAccountMetadataService {
       return;
     }
 
+    if (isDefined(toUserWorkspaceId)) {
+      await this.repository.update(
+        { id: In(connectedAccounts.map((account) => account.id)), workspaceId },
+        { custodianUserWorkspaceId: toUserWorkspaceId },
+      );
+    }
+
+    await this.disconnectAccounts({ connectedAccounts, workspaceId });
+  }
+
+  async disconnect({
+    id,
+    workspaceId,
+  }: {
+    id: string;
+    workspaceId: string;
+  }): Promise<ConnectedAccountEntity> {
+    const connectedAccount = await this.repository.findOneOrFail({
+      where: { id, workspaceId },
+    });
+
+    await this.disconnectAccounts({
+      connectedAccounts: [connectedAccount],
+      workspaceId,
+    });
+
+    return this.repository.findOneOrFail({ where: { id, workspaceId } });
+  }
+
+  private async disconnectAccounts({
+    connectedAccounts,
+    workspaceId,
+  }: {
+    connectedAccounts: ConnectedAccountEntity[];
+    workspaceId: string;
+  }): Promise<void> {
     const connectedAccountIds = connectedAccounts.map((account) => account.id);
+
+    this.logger.log(
+      `WorkspaceId: ${workspaceId} Disconnecting ${connectedAccountIds.length} connected account(s)`,
+    );
 
     await this.repository.manager.transaction(async (entityManager) => {
       await entityManager.update(
         ConnectedAccountEntity,
         { id: In(connectedAccountIds), workspaceId },
         {
-          userWorkspaceId: toUserWorkspaceId,
           accessToken: null,
           refreshToken: null,
           connectionParameters: null,
@@ -217,6 +261,14 @@ export class ConnectedAccountMetadataService {
 
     for (const connectedAccount of connectedAccounts) {
       await this.appOAuthRevokeService.revokeIfApp(connectedAccount);
+
+      if (isDefined(connectedAccount.connectionProviderId)) {
+        await this.connectionProviderLifecycleHookService.dispatchOnDisconnect({
+          connectionProviderId: connectedAccount.connectionProviderId,
+          workspaceId,
+          connectedAccountId: connectedAccount.id,
+        });
+      }
     }
   }
 

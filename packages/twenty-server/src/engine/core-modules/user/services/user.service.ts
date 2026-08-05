@@ -404,13 +404,11 @@ export class UserService {
         actingUserWorkspaceId,
       });
 
-    if (isDefined(custodianUserWorkspaceId)) {
-      await this.connectedAccountMetadataService.transferOwnership({
-        fromUserWorkspaceId: userWorkspaceId,
-        toUserWorkspaceId: custodianUserWorkspaceId,
-        workspaceId,
-      });
-    }
+    await this.connectedAccountMetadataService.transferCustody({
+      fromUserWorkspaceId: userWorkspaceId,
+      toUserWorkspaceId: custodianUserWorkspaceId,
+      workspaceId,
+    });
 
     await this.globalWorkspaceOrmManager.executeInWorkspaceContext(async () => {
       const workspaceMemberRepository =
@@ -449,14 +447,6 @@ export class UserService {
       return undefined;
     }
 
-    const actingUserWorkspace = otherUserWorkspaces.find(
-      (otherUserWorkspace) => otherUserWorkspace.id === actingUserWorkspaceId,
-    );
-
-    if (isDefined(actingUserWorkspace)) {
-      return actingUserWorkspace.id;
-    }
-
     const rolesByUserWorkspaceId =
       await this.userRoleService.getRolesByUserWorkspaces({
         userWorkspaceIds: otherUserWorkspaces.map(
@@ -465,7 +455,7 @@ export class UserService {
         workspaceId: removedUserWorkspace.workspaceId,
       });
 
-    const oldestAdminUserWorkspace = otherUserWorkspaces.find(
+    const adminUserWorkspaces = otherUserWorkspaces.filter(
       (otherUserWorkspace) =>
         rolesByUserWorkspaceId
           .get(otherUserWorkspace.id)
@@ -476,7 +466,11 @@ export class UserService {
           ),
     );
 
-    return (oldestAdminUserWorkspace ?? otherUserWorkspaces[0]).id;
+    const actingAdminUserWorkspace = adminUserWorkspaces.find(
+      (adminUserWorkspace) => adminUserWorkspace.id === actingUserWorkspaceId,
+    );
+
+    return (actingAdminUserWorkspace ?? adminUserWorkspaces[0])?.id;
   }
 
   async hasUserAccessToWorkspaceOrThrow(userId: string, workspaceId: string) {

@@ -88,6 +88,9 @@ export class ConnectedAccountEntity extends WorkspaceRelatedEntity {
   userWorkspaceId: string;
 
   @Column({ type: 'uuid', nullable: true })
+  custodianUserWorkspaceId: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
   connectionProviderId: string | null;
 
   @ManyToOne(() => ConnectionProviderEntity, {
