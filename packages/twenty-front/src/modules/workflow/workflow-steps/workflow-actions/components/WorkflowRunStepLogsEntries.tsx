@@ -7,7 +7,7 @@ import { MONOSPACE_FONT_FAMILY } from '@/ui/theme/constants/MonospaceFontFamily'
 import {
   StyledSection,
   StyledSectionTitle,
-} from '@/workflow/workflow-run/observability/workflowRunStepLogsStyles';
+} from '@/workflow/workflow-steps/workflow-actions/components/workflowRunStepLogsStyles';
 
 const StyledEntriesList = styled.div`
   background: ${themeCssVariables.background.tertiary};
