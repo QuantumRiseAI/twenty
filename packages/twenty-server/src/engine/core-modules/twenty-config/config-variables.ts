@@ -1273,7 +1273,7 @@ export class ConfigVariables {
   @ConfigVariablesMetadata({
     group: ConfigVariablesGroup.ADVANCED_SETTINGS,
     description:
-      'Client ID of the user-assigned managed identity used for Entra ID database authentication. Leave unset to use the ambient credential chain (system-assigned identity, workload identity, or a local Azure CLI login).',
+      'Client ID of the user-assigned managed identity used for Entra ID database authentication. Leave unset to use the system-assigned identity. Required when more than one user-assigned identity is attached to the host, since the identity endpoint cannot then pick one on its own.',
     type: ConfigVariableType.STRING,
     isEnvOnly: true,
   })

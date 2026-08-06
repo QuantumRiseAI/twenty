@@ -38,6 +38,15 @@ const TOKEN_EXPIRY_SKEW_MS = 5 * 60 * 1000;
  */
 const AZURE_IDENTITY_MODULE_ID: string = '@azure/identity';
 
+/**
+ * Mirrors the spellings `TwentyConfigService` accepts for a boolean, so a value
+ * this module reads straight off `process.env` cannot disagree with what the
+ * config surface reports for the same variable.
+ */
+const isEnvFlagEnabled = (value: string | undefined): boolean =>
+  value !== undefined &&
+  ['true', 'on', 'yes', '1'].includes(value.trim().toLowerCase());
+
 type AccessToken = {
   token: string;
   expiresOnTimestamp: number;
@@ -76,7 +85,9 @@ const loadAzureCredential = async (): Promise<TokenCredential> => {
   // managed identity, and a developer running the server would connect as
   // themselves rather than as the app. Narrow managed identity is the default;
   // the broad chain has to be asked for by name.
-  if (process.env.PG_DATABASE_AZURE_USE_DEFAULT_CREDENTIAL_CHAIN === 'true') {
+  if (
+    isEnvFlagEnabled(process.env.PG_DATABASE_AZURE_USE_DEFAULT_CREDENTIAL_CHAIN)
+  ) {
     return new DefaultAzureCredential(
       clientId ? { managedIdentityClientId: clientId } : undefined,
     );
@@ -147,7 +158,10 @@ const readSslMode = (url: string | undefined): string | undefined => {
   }
 
   try {
-    return new URL(url).searchParams.get('sslmode') ?? undefined;
+    return (
+      new URL(url).searchParams.get('sslmode')?.trim().toLowerCase() ??
+      undefined
+    );
   } catch {
     return undefined;
   }
@@ -163,7 +177,7 @@ const resolveSsl = (url: string | undefined): SslOptions => {
   }
 
   return {
-    rejectUnauthorized: process.env.PG_SSL_ALLOW_SELF_SIGNED !== 'true',
+    rejectUnauthorized: !isEnvFlagEnabled(process.env.PG_SSL_ALLOW_SELF_SIGNED),
   };
 };
 

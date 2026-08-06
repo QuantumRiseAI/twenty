@@ -87,6 +87,45 @@ describe('database-auth', () => {
       ).toThrow(/must not travel in cleartext/);
     });
 
+    it('rejects sslmode=disable whatever its casing', () => {
+      process.env.PG_DATABASE_AUTH_MODE =
+        DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+
+      expect(() =>
+        loadModule().buildDatabaseAuthExtra(
+          'postgres://mi@host:5432/db?sslmode=DISABLE',
+        ),
+      ).toThrow(/must not travel in cleartext/);
+    });
+
+    // Read straight off process.env here, but surfaced through
+    // TwentyConfigService elsewhere; the two must agree on what "true" means.
+    it.each(['true', 'TRUE', 'on', 'yes', '1'])(
+      'treats PG_SSL_ALLOW_SELF_SIGNED=%s the way TwentyConfigService does',
+      (value) => {
+        process.env.PG_DATABASE_AUTH_MODE =
+          DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+        process.env.PG_SSL_ALLOW_SELF_SIGNED = value;
+
+        expect(loadModule().buildDatabaseAuthExtra(AZURE_URL).ssl).toEqual({
+          rejectUnauthorized: false,
+        });
+      },
+    );
+
+    it.each(['false', 'off', 'no', '0', ''])(
+      'keeps certificate verification on for PG_SSL_ALLOW_SELF_SIGNED=%s',
+      (value) => {
+        process.env.PG_DATABASE_AUTH_MODE =
+          DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+        process.env.PG_SSL_ALLOW_SELF_SIGNED = value;
+
+        expect(loadModule().buildDatabaseAuthExtra(AZURE_URL).ssl).toEqual({
+          rejectUnauthorized: true,
+        });
+      },
+    );
+
     it('relaxes certificate verification only when PG_SSL_ALLOW_SELF_SIGNED is set', () => {
       process.env.PG_DATABASE_AUTH_MODE =
         DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
