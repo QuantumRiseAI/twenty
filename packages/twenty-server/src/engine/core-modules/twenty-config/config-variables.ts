@@ -1282,6 +1282,16 @@ export class ConfigVariables {
   PG_DATABASE_AZURE_CLIENT_ID: string;
 
   @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.ADVANCED_SETTINGS,
+    description:
+      'Authenticate to the database through the broad DefaultAzureCredential chain instead of managed identity alone. Intended for local development, where it picks up an Azure CLI login. Leave off in production: the chain also honours ambient AZURE_* environment credentials, which would silently outrank the intended managed identity.',
+    type: ConfigVariableType.BOOLEAN,
+    isEnvOnly: true,
+  })
+  @IsOptional()
+  PG_DATABASE_AZURE_USE_DEFAULT_CREDENTIAL_CHAIN = false;
+
+  @ConfigVariablesMetadata({
     group: ConfigVariablesGroup.SERVER_CONFIG,
     description:
       'Allow connections to a database with self-signed certificates',

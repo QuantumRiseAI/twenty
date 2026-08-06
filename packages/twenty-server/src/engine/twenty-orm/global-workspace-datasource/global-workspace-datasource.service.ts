@@ -47,7 +47,9 @@ export class GlobalWorkspaceDataSourceService
           : undefined,
         poolSize: this.twentyConfigService.get('PG_POOL_MAX_CONNECTIONS'),
         extra: {
-          ...buildDatabaseAuthExtra(),
+          ...buildDatabaseAuthExtra(
+            this.twentyConfigService.get('PG_DATABASE_URL'),
+          ),
           query_timeout: this.twentyConfigService.get(
             'PG_DATABASE_PRIMARY_TIMEOUT_MS',
           ),
@@ -87,7 +89,9 @@ export class GlobalWorkspaceDataSourceService
             : undefined,
           poolSize: this.twentyConfigService.get('PG_POOL_MAX_CONNECTIONS'),
           extra: {
-            ...buildDatabaseAuthExtra(),
+            ...buildDatabaseAuthExtra(
+              this.twentyConfigService.get('PG_DATABASE_REPLICA_URL'),
+            ),
             query_timeout: this.twentyConfigService.get(
               'PG_DATABASE_REPLICA_TIMEOUT_MS',
             ),

@@ -18,7 +18,7 @@ const typeORMRawModuleOptions: DataSourceOptions = {
         }
       : undefined,
   extra: {
-    ...buildDatabaseAuthExtra(),
+    ...buildDatabaseAuthExtra(process.env.PG_DATABASE_URL),
   },
 };
 

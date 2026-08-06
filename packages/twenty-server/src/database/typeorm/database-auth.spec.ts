@@ -1,52 +1,297 @@
-import {
-  buildDatabaseAuthExtra,
-  resetDatabaseAuthCacheForTesting,
-} from 'src/database/typeorm/database-auth';
+import { Client } from 'pg';
+
 import { DatabaseAuthMode } from 'src/database/typeorm/interfaces/database-auth-mode.interface';
 
-describe('buildDatabaseAuthExtra', () => {
-  const originalAuthMode = process.env.PG_DATABASE_AUTH_MODE;
+const AZURE_URL =
+  'postgres://twenty-mi@qr-pg.postgres.database.azure.com:5432/twenty?sslmode=require';
 
-  afterEach(() => {
-    if (originalAuthMode === undefined) {
-      delete process.env.PG_DATABASE_AUTH_MODE;
-    } else {
-      process.env.PG_DATABASE_AUTH_MODE = originalAuthMode;
-    }
-    resetDatabaseAuthCacheForTesting();
-  });
+const getToken = jest.fn();
 
-  it('contributes nothing when the auth mode is unset', () => {
+jest.mock(
+  '@azure/identity',
+  () => ({
+    ManagedIdentityCredential: jest
+      .fn()
+      .mockImplementation(() => ({ getToken })),
+    DefaultAzureCredential: jest.fn().mockImplementation(() => ({ getToken })),
+  }),
+  { virtual: true },
+);
+
+// The module memoizes its credential and token, so each test loads it fresh.
+const loadModule = () =>
+  // oxlint-disable-next-line typescript/no-require-imports
+  require('src/database/typeorm/database-auth') as typeof import('src/database/typeorm/database-auth');
+
+describe('database-auth', () => {
+  const ORIGINAL_ENV = process.env;
+
+  beforeEach(() => {
+    jest.resetModules();
+    getToken.mockReset();
+    process.env = { ...ORIGINAL_ENV };
     delete process.env.PG_DATABASE_AUTH_MODE;
-
-    expect(buildDatabaseAuthExtra()).toEqual({});
+    delete process.env.PG_DATABASE_AZURE_CLIENT_ID;
+    delete process.env.PG_DATABASE_AZURE_USE_DEFAULT_CREDENTIAL_CHAIN;
+    delete process.env.PG_SSL_ALLOW_SELF_SIGNED;
   });
 
-  it('contributes nothing when the auth mode is explicitly PASSWORD', () => {
-    process.env.PG_DATABASE_AUTH_MODE = DatabaseAuthMode.PASSWORD;
-
-    expect(buildDatabaseAuthExtra()).toEqual({});
+  afterAll(() => {
+    process.env = ORIGINAL_ENV;
   });
 
-  it('supplies a password callback in AZURE_MANAGED_IDENTITY mode', () => {
-    process.env.PG_DATABASE_AUTH_MODE = DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+  describe('buildDatabaseAuthExtra', () => {
+    it('contributes nothing when the auth mode is unset', () => {
+      expect(loadModule().buildDatabaseAuthExtra(AZURE_URL)).toEqual({});
+    });
 
-    // `pg` invokes this per new connection, which is what keeps a pool alive
-    // across token expiry.
-    expect(typeof buildDatabaseAuthExtra().password).toBe('function');
+    it('contributes nothing when the auth mode is explicitly PASSWORD', () => {
+      process.env.PG_DATABASE_AUTH_MODE = DatabaseAuthMode.PASSWORD;
+
+      expect(loadModule().buildDatabaseAuthExtra(AZURE_URL)).toEqual({});
+    });
+
+    it('supplies a password callback in AZURE_MANAGED_IDENTITY mode', () => {
+      process.env.PG_DATABASE_AUTH_MODE =
+        DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+
+      expect(
+        typeof loadModule().buildDatabaseAuthExtra(AZURE_URL).password,
+      ).toBe('function');
+    });
+
+    it('accepts lowercase and kebab-case spellings of the auth mode', () => {
+      process.env.PG_DATABASE_AUTH_MODE = 'azure-managed-identity';
+
+      expect(
+        typeof loadModule().buildDatabaseAuthExtra(AZURE_URL).password,
+      ).toBe('function');
+    });
+
+    it('throws on an unrecognised auth mode rather than silently ignoring it', () => {
+      process.env.PG_DATABASE_AUTH_MODE = 'gcp-iam';
+
+      expect(() => loadModule().buildDatabaseAuthExtra(AZURE_URL)).toThrow(
+        /Invalid PG_DATABASE_AUTH_MODE "gcp-iam"/,
+      );
+    });
+
+    it('refuses to send a token over a connection that disables TLS', () => {
+      process.env.PG_DATABASE_AUTH_MODE =
+        DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+
+      expect(() =>
+        loadModule().buildDatabaseAuthExtra(
+          'postgres://mi@host:5432/db?sslmode=disable',
+        ),
+      ).toThrow(/must not travel in cleartext/);
+    });
+
+    it('relaxes certificate verification only when PG_SSL_ALLOW_SELF_SIGNED is set', () => {
+      process.env.PG_DATABASE_AUTH_MODE =
+        DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+
+      expect(loadModule().buildDatabaseAuthExtra(AZURE_URL).ssl).toEqual({
+        rejectUnauthorized: true,
+      });
+
+      jest.resetModules();
+      process.env.PG_SSL_ALLOW_SELF_SIGNED = 'true';
+
+      expect(loadModule().buildDatabaseAuthExtra(AZURE_URL).ssl).toEqual({
+        rejectUnauthorized: false,
+      });
+    });
   });
 
-  it('accepts lowercase and kebab-case spellings of the auth mode', () => {
-    process.env.PG_DATABASE_AUTH_MODE = 'azure-managed-identity';
+  // Regression tests for the layer that actually consumes this config. TypeORM
+  // merging `extra` last is necessary but not sufficient: `pg` re-parses
+  // `connectionString` afterwards and would otherwise clobber the callback and
+  // drop TLS. Asserting on the built object alone does not catch either.
+  describe('the pg client TypeORM ultimately builds', () => {
+    // `connectionParameters` is what pg actually connects with, after it has
+    // re-parsed the connection string. It is internal, hence the cast.
+    const connectionParametersOf = (client: Client) =>
+      (
+        client as unknown as {
+          connectionParameters: { ssl: unknown; host: string };
+        }
+      ).connectionParameters;
 
-    expect(typeof buildDatabaseAuthExtra().password).toBe('function');
+    const buildPgClient = (extra: Record<string, unknown>) =>
+      // Mirrors PostgresDriver.createPool: TypeORM's own keys first, `extra` last.
+      new Client({
+        connectionString: AZURE_URL,
+        host: 'qr-pg.postgres.database.azure.com',
+        user: 'twenty-mi',
+        password: undefined,
+        database: 'twenty',
+        port: 5432,
+        ssl: undefined,
+        ...extra,
+      });
+
+    it('still carries the token callback once pg has parsed the config', () => {
+      process.env.PG_DATABASE_AUTH_MODE =
+        DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+
+      const client = buildPgClient(
+        loadModule().buildDatabaseAuthExtra(AZURE_URL),
+      );
+
+      expect(typeof client.password).toBe('function');
+    });
+
+    it('never falls back to PGPASSWORD', () => {
+      process.env.PG_DATABASE_AUTH_MODE =
+        DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+      process.env.PGPASSWORD = 'an-unrelated-secret';
+
+      const client = buildPgClient(
+        loadModule().buildDatabaseAuthExtra(AZURE_URL),
+      );
+
+      expect(client.password).not.toBe('an-unrelated-secret');
+
+      delete process.env.PGPASSWORD;
+    });
+
+    it('keeps TLS enabled', () => {
+      process.env.PG_DATABASE_AUTH_MODE =
+        DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+
+      const client = buildPgClient(
+        loadModule().buildDatabaseAuthExtra(AZURE_URL),
+      );
+
+      expect(connectionParametersOf(client).ssl).toEqual({
+        rejectUnauthorized: true,
+      });
+    });
+
+    it('leaves the connection untouched in PASSWORD mode', () => {
+      const client = buildPgClient(
+        loadModule().buildDatabaseAuthExtra(AZURE_URL),
+      );
+
+      expect(connectionParametersOf(client).host).toBe(
+        'qr-pg.postgres.database.azure.com',
+      );
+      expect(connectionParametersOf(client).ssl).toEqual({});
+    });
   });
 
-  it('throws on an unrecognised auth mode rather than silently ignoring it', () => {
-    process.env.PG_DATABASE_AUTH_MODE = 'gcp-iam';
+  describe('getAzureDatabaseAccessToken', () => {
+    const inOneHour = () => Date.now() + 60 * 60 * 1000;
 
-    expect(() => buildDatabaseAuthExtra()).toThrow(
-      /Invalid PG_DATABASE_AUTH_MODE "gcp-iam"/,
-    );
+    it('shares one request across concurrent callers', async () => {
+      getToken.mockResolvedValue({
+        token: 'token-1',
+        expiresOnTimestamp: inOneHour(),
+      });
+
+      const { getAzureDatabaseAccessToken } = loadModule();
+
+      const tokens = await Promise.all(
+        Array.from({ length: 10 }, () => getAzureDatabaseAccessToken()),
+      );
+
+      expect(tokens).toEqual(Array.from({ length: 10 }, () => 'token-1'));
+      // A pool ramping up must not fan out to a rate-limited identity endpoint.
+      expect(getToken).toHaveBeenCalledTimes(1);
+    });
+
+    it('reuses a cached token on later calls', async () => {
+      getToken.mockResolvedValue({
+        token: 'token-1',
+        expiresOnTimestamp: inOneHour(),
+      });
+
+      const { getAzureDatabaseAccessToken } = loadModule();
+
+      await getAzureDatabaseAccessToken();
+      await getAzureDatabaseAccessToken();
+
+      expect(getToken).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-mints a token that is inside the expiry skew', async () => {
+      getToken
+        .mockResolvedValueOnce({
+          token: 'nearly-expired',
+          expiresOnTimestamp: Date.now() + 60 * 1000,
+        })
+        .mockResolvedValueOnce({
+          token: 'fresh',
+          expiresOnTimestamp: inOneHour(),
+        });
+
+      const { getAzureDatabaseAccessToken } = loadModule();
+
+      expect(await getAzureDatabaseAccessToken()).toBe('nearly-expired');
+      expect(await getAzureDatabaseAccessToken()).toBe('fresh');
+      expect(getToken).toHaveBeenCalledTimes(2);
+    });
+
+    it('retries after a failure instead of caching it', async () => {
+      getToken
+        .mockRejectedValueOnce(new Error('identity endpoint unavailable'))
+        .mockResolvedValueOnce({
+          token: 'recovered',
+          expiresOnTimestamp: inOneHour(),
+        });
+
+      const { getAzureDatabaseAccessToken } = loadModule();
+
+      await expect(getAzureDatabaseAccessToken()).rejects.toThrow(
+        'identity endpoint unavailable',
+      );
+      expect(await getAzureDatabaseAccessToken()).toBe('recovered');
+    });
+
+    it('raises a clear error when the credential chain returns no token', async () => {
+      getToken.mockResolvedValue(null);
+
+      const { getAzureDatabaseAccessToken } = loadModule();
+
+      await expect(getAzureDatabaseAccessToken()).rejects.toThrow(
+        /returned no token/,
+      );
+    });
+
+    it('uses managed identity rather than the broad credential chain by default', async () => {
+      getToken.mockResolvedValue({
+        token: 'token-1',
+        expiresOnTimestamp: inOneHour(),
+      });
+
+      const { getAzureDatabaseAccessToken } = loadModule();
+
+      await getAzureDatabaseAccessToken();
+
+      // oxlint-disable-next-line typescript/no-require-imports
+      const identity = require('@azure/identity');
+
+      expect(identity.ManagedIdentityCredential).toHaveBeenCalledTimes(1);
+      expect(identity.DefaultAzureCredential).not.toHaveBeenCalled();
+    });
+
+    it('uses the broad credential chain only when explicitly asked', async () => {
+      process.env.PG_DATABASE_AZURE_USE_DEFAULT_CREDENTIAL_CHAIN = 'true';
+      getToken.mockResolvedValue({
+        token: 'token-1',
+        expiresOnTimestamp: inOneHour(),
+      });
+
+      const { getAzureDatabaseAccessToken } = loadModule();
+
+      await getAzureDatabaseAccessToken();
+
+      // oxlint-disable-next-line typescript/no-require-imports
+      const identity = require('@azure/identity');
+
+      expect(identity.DefaultAzureCredential).toHaveBeenCalledTimes(1);
+      expect(identity.ManagedIdentityCredential).not.toHaveBeenCalled();
+    });
   });
 });
