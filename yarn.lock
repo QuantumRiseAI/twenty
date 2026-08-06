@@ -49967,6 +49967,11 @@ __metadata:
     unzipper: "npm:^0.12.3"
     uuid: "npm:^11.1.1"
     zod: "npm:^4.1.11"
+  peerDependencies:
+    "@azure/identity": ^4.5.0
+  peerDependenciesMeta:
+    "@azure/identity":
+      optional: true
   languageName: unknown
   linkType: soft
 

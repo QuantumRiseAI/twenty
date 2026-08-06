@@ -22,6 +22,7 @@ import {
 import { isDefined } from 'twenty-shared/utils';
 import { type LoggerOptions } from 'typeorm/logger/LoggerOptions';
 
+import { DatabaseAuthMode } from 'src/database/typeorm/interfaces/database-auth-mode.interface';
 import { LogicFunctionDriverType } from 'src/engine/core-modules/logic-function/logic-function-drivers/interfaces/logic-function-driver.interface';
 import { type AwsRegion } from 'src/engine/core-modules/twenty-config/interfaces/aws-region.interface';
 import { NodeEnvironment } from 'src/engine/core-modules/twenty-config/interfaces/node-environment.interface';
@@ -1255,6 +1256,40 @@ export class ConfigVariables {
     require_host: false,
   })
   PG_DATABASE_REPLICA_URL: string;
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.ADVANCED_SETTINGS,
+    description:
+      'How to authenticate to Postgres. PASSWORD uses the credentials in PG_DATABASE_URL. AZURE_MANAGED_IDENTITY presents a short-lived Microsoft Entra ID token instead, for Azure Database for PostgreSQL servers with password authentication disabled. Needs a passwordless PG_DATABASE_URL and the @azure/identity package, which is an optional peer dependency and is not installed by default.',
+    type: ConfigVariableType.ENUM,
+    options: Object.values(DatabaseAuthMode),
+    isEnvOnly: true,
+  })
+  @IsOptional()
+  @CastToUpperSnakeCase()
+  @IsEnum(DatabaseAuthMode)
+  PG_DATABASE_AUTH_MODE: DatabaseAuthMode = DatabaseAuthMode.PASSWORD;
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.ADVANCED_SETTINGS,
+    description:
+      'Client ID of the user-assigned managed identity used for Entra ID database authentication. Leave unset to use the system-assigned identity. Required when more than one user-assigned identity is attached to the host, since the identity endpoint cannot then pick one on its own.',
+    type: ConfigVariableType.STRING,
+    isEnvOnly: true,
+  })
+  @IsOptional()
+  @IsString()
+  PG_DATABASE_AZURE_CLIENT_ID: string;
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.ADVANCED_SETTINGS,
+    description:
+      'Authenticate to the database through the broad DefaultAzureCredential chain instead of managed identity alone. Intended for local development, where it picks up an Azure CLI login. Leave off in production: the chain also honours ambient AZURE_* environment credentials, which would silently outrank the intended managed identity.',
+    type: ConfigVariableType.BOOLEAN,
+    isEnvOnly: true,
+  })
+  @IsOptional()
+  PG_DATABASE_AZURE_USE_DEFAULT_CREDENTIAL_CHAIN = false;
 
   @ConfigVariablesMetadata({
     group: ConfigVariablesGroup.SERVER_CONFIG,
