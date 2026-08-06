@@ -1,5 +1,7 @@
 import { config } from 'dotenv';
 import { DataSource, type DataSourceOptions } from 'typeorm';
+
+import { buildDatabaseAuthExtra } from 'src/database/typeorm/database-auth';
 config({
   path: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
   override: true,
@@ -15,6 +17,9 @@ const typeORMRawModuleOptions: DataSourceOptions = {
           rejectUnauthorized: false,
         }
       : undefined,
+  extra: {
+    ...buildDatabaseAuthExtra(),
+  },
 };
 
 export const rawDataSource = new DataSource(typeORMRawModuleOptions);

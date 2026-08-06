@@ -176,6 +176,9 @@
     "uuid": "^11.1.1",
     "zod": "^4.1.11"
   },
+  "optionalDependencies": {
+    "@azure/identity": "^4.5.0"
+  },
   "devDependencies": {
     "@lingui/cli": "^5.9.5",
     "@nestjs/cli": "^11.0.16",
