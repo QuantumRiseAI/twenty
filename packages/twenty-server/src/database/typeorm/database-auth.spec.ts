@@ -288,6 +288,34 @@ describe('database-auth', () => {
       expect(await getAzureDatabaseAccessToken()).toBe('recovered');
     });
 
+    // The in-flight request is shared, so an acquisition that never settles
+    // would otherwise park every subsequent connection behind it forever.
+    it('bounds a token request that never settles, and retries afterwards', async () => {
+      jest.useFakeTimers();
+
+      try {
+        getToken.mockReturnValueOnce(new Promise(() => {}));
+
+        const { getAzureDatabaseAccessToken } = loadModule();
+        const timedOut = getAzureDatabaseAccessToken();
+        const assertion = expect(timedOut).rejects.toThrow(/Timed out after/);
+
+        await jest.advanceTimersByTimeAsync(30 * 1000);
+        await assertion;
+
+        getToken.mockResolvedValueOnce({
+          token: 'after-timeout',
+          expiresOnTimestamp: Date.now() + 60 * 60 * 1000,
+        });
+
+        await expect(getAzureDatabaseAccessToken()).resolves.toBe(
+          'after-timeout',
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
     it('raises a clear error when the credential chain returns no token', async () => {
       getToken.mockResolvedValue(null);
 

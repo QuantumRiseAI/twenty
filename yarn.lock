@@ -2384,135 +2384,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@azure/abort-controller@npm:^2.0.0, @azure/abort-controller@npm:^2.1.2":
-  version: 2.2.0
-  resolution: "@azure/abort-controller@npm:2.2.0"
-  dependencies:
-    tslib: "npm:^2.6.2"
-  checksum: 10c0/8de5bfe64802b6a57e9567eaec789dfd46774b5a6d1420345788f0879c229a48c8ff3c8c6eedb3dc7c0d8d9fb7651bf83a5fb496d8323f65917be8c02c2b7268
-  languageName: node
-  linkType: hard
-
-"@azure/core-auth@npm:^1.10.0, @azure/core-auth@npm:^1.9.0":
-  version: 1.11.0
-  resolution: "@azure/core-auth@npm:1.11.0"
-  dependencies:
-    "@azure/abort-controller": "npm:^2.1.2"
-    "@azure/core-util": "npm:^1.13.0"
-    tslib: "npm:^2.6.2"
-  checksum: 10c0/40e5ee735bf40ba0e99807ae5771238212ee97552574a59e17e18795e2c28fcdb58912057003337a5f066cf7acb7fa65eb3d9f8b2b613fe98e449e940aef3f59
-  languageName: node
-  linkType: hard
-
-"@azure/core-client@npm:^1.9.2":
-  version: 1.11.0
-  resolution: "@azure/core-client@npm:1.11.0"
-  dependencies:
-    "@azure/abort-controller": "npm:^2.1.2"
-    "@azure/core-auth": "npm:^1.10.0"
-    "@azure/core-rest-pipeline": "npm:^1.22.0"
-    "@azure/core-tracing": "npm:^1.3.0"
-    "@azure/core-util": "npm:^1.13.0"
-    "@azure/logger": "npm:^1.3.0"
-    tslib: "npm:^2.6.2"
-  checksum: 10c0/0cca414b95b9ba04c87fd426f025a8038d530a8e6a54b52aeb0f548e9d0eb042ac937f405b13967eee3d6c2f9b6e3d7c0082ef33f83b9d96ce82a5dabcb2c818
-  languageName: node
-  linkType: hard
-
-"@azure/core-rest-pipeline@npm:^1.17.0, @azure/core-rest-pipeline@npm:^1.22.0":
-  version: 1.25.0
-  resolution: "@azure/core-rest-pipeline@npm:1.25.0"
-  dependencies:
-    "@azure/abort-controller": "npm:^2.1.2"
-    "@azure/core-auth": "npm:^1.10.0"
-    "@azure/core-tracing": "npm:^1.3.0"
-    "@azure/core-util": "npm:^1.13.0"
-    "@azure/logger": "npm:^1.3.0"
-    "@typespec/ts-http-runtime": "npm:^0.3.4"
-    tslib: "npm:^2.6.2"
-  checksum: 10c0/240ccb463ae6fafe78268871514440eed927147872dc64dd82be9956abe3be1b19bb2f0be2ec9a458f1a9f8613b9532c1be7a798d8d1fc965dcf9fd721a9e0c8
-  languageName: node
-  linkType: hard
-
-"@azure/core-tracing@npm:^1.0.0, @azure/core-tracing@npm:^1.3.0":
-  version: 1.4.0
-  resolution: "@azure/core-tracing@npm:1.4.0"
-  dependencies:
-    tslib: "npm:^2.6.2"
-  checksum: 10c0/10401c0c38714585456258bc0540aa99dfa626272c3e96c5a331ad3d522c01dd930c0ed16a6ea024957ab97a8a241c7ae4ae5a8759ba293d08001eac8046722d
-  languageName: node
-  linkType: hard
-
-"@azure/core-util@npm:^1.11.0, @azure/core-util@npm:^1.13.0":
-  version: 1.14.0
-  resolution: "@azure/core-util@npm:1.14.0"
-  dependencies:
-    "@azure/abort-controller": "npm:^2.1.2"
-    "@typespec/ts-http-runtime": "npm:^0.3.0"
-    tslib: "npm:^2.6.2"
-  checksum: 10c0/f4885a0b98d169ee169369f362ea84b7298b83477c3a35f0ad6a5bc31c008a9d0f21f6b068cee71c71f86a6ac6030489b1b3b0d250c7ed8d7b1c34b335ad7e32
-  languageName: node
-  linkType: hard
-
-"@azure/identity@npm:^4.5.0":
-  version: 4.13.1
-  resolution: "@azure/identity@npm:4.13.1"
-  dependencies:
-    "@azure/abort-controller": "npm:^2.0.0"
-    "@azure/core-auth": "npm:^1.9.0"
-    "@azure/core-client": "npm:^1.9.2"
-    "@azure/core-rest-pipeline": "npm:^1.17.0"
-    "@azure/core-tracing": "npm:^1.0.0"
-    "@azure/core-util": "npm:^1.11.0"
-    "@azure/logger": "npm:^1.0.0"
-    "@azure/msal-browser": "npm:^5.5.0"
-    "@azure/msal-node": "npm:^5.1.0"
-    open: "npm:^10.1.0"
-    tslib: "npm:^2.2.0"
-  checksum: 10c0/924b3b545cbffd1b22a5f28593b2024075f0aa3fc52ed6a96aa4e33f358c2f112da0cdd4d90d1a47cbcfc13a5ccfb8854d511dfed2330e1c463b642b6a362d70
-  languageName: node
-  linkType: hard
-
-"@azure/logger@npm:^1.0.0, @azure/logger@npm:^1.3.0":
-  version: 1.4.0
-  resolution: "@azure/logger@npm:1.4.0"
-  dependencies:
-    "@typespec/ts-http-runtime": "npm:^0.3.0"
-    tslib: "npm:^2.6.2"
-  checksum: 10c0/7f8497623cb5fcdeba87debfc60e8a53684ee8ba9f93a9cf32c7238d51072bbfbc6a7abb270ade965fea96b277c96ff070e548f0758fe26a470b8e193b94e317
-  languageName: node
-  linkType: hard
-
-"@azure/msal-browser@npm:^5.5.0":
-  version: 5.17.3
-  resolution: "@azure/msal-browser@npm:5.17.3"
-  dependencies:
-    "@azure/msal-common": "npm:16.11.3"
-  checksum: 10c0/afcdbc7d3203a008f2c3b265e6f3bbb7932e89a3e40cd7a00d1b60d3c529a66a0eb8b8ab94cfc5dbad20b70085ad057b2d6bdb9d774a8ce674a9ee71c99ff620
-  languageName: node
-  linkType: hard
-
-"@azure/msal-common@npm:16.11.3":
-  version: 16.11.3
-  resolution: "@azure/msal-common@npm:16.11.3"
-  checksum: 10c0/2c238b62b6f60668e2e8a54036156f860cb152575d76c2ab4cad0a710ac22efbebc233db3ad2ce1647234b41a981ff6c99b6b59743c3a33f2808e2bd8e05ef52
-  languageName: node
-  linkType: hard
-
 "@azure/msal-common@npm:16.8.0":
   version: 16.8.0
   resolution: "@azure/msal-common@npm:16.8.0"
   checksum: 10c0/a363595615710c2a954ff169acec66e097537d73b2e8ae35e6dd81d172c006c17b7b08a4b238ff0a18b3d530d149fcc3d4e778ef0774638477cb5f7be4782fb8
-  languageName: node
-  linkType: hard
-
-"@azure/msal-node@npm:^5.1.0":
-  version: 5.4.3
-  resolution: "@azure/msal-node@npm:5.4.3"
-  dependencies:
-    "@azure/msal-common": "npm:16.11.3"
-    jsonwebtoken: "npm:^9.0.0"
-  checksum: 10c0/21aa1eaac458cdc8989539877e7cbc8a4387a582ecc4975c61d21e62694c788d1935cd9daf330e59b345c04917fe2dcc31481f6c329bc5c0ef67e0faa66cdd39
   languageName: node
   linkType: hard
 
@@ -21859,17 +21734,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typespec/ts-http-runtime@npm:^0.3.0, @typespec/ts-http-runtime@npm:^0.3.4":
-  version: 0.3.8
-  resolution: "@typespec/ts-http-runtime@npm:0.3.8"
-  dependencies:
-    http-proxy-agent: "npm:^7.0.0"
-    https-proxy-agent: "npm:^7.0.0"
-    tslib: "npm:^2.6.2"
-  checksum: 10c0/2bd1e284ab03f8aab977f204b9937c312cb63f70bdc05c1ae599e4d4b0787e86248b59e13bf7e44c1fe1dd47dd05d2e417aacb20fec57c66bc026f9d89107841
-  languageName: node
-  linkType: hard
-
 "@ungap/structured-clone@npm:^1.0.0, @ungap/structured-clone@npm:^1.3.0":
   version: 1.3.0
   resolution: "@ungap/structured-clone@npm:1.3.0"
@@ -33740,7 +33604,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"https-proxy-agent@npm:^7.0.0, https-proxy-agent@npm:^7.0.1, https-proxy-agent@npm:^7.0.2, https-proxy-agent@npm:^7.0.5, https-proxy-agent@npm:^7.0.6":
+"https-proxy-agent@npm:^7.0.1, https-proxy-agent@npm:^7.0.2, https-proxy-agent@npm:^7.0.5, https-proxy-agent@npm:^7.0.6":
   version: 7.0.6
   resolution: "https-proxy-agent@npm:7.0.6"
   dependencies:
@@ -41022,7 +40886,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"open@npm:10.2.0, open@npm:^10.1.0, open@npm:^10.2.0":
+"open@npm:10.2.0, open@npm:^10.2.0":
   version: 10.2.0
   resolution: "open@npm:10.2.0"
   dependencies:
@@ -49906,7 +49770,6 @@ __metadata:
     "@aws-sdk/credential-providers": "npm:3.1001.0"
     "@aws-sdk/lib-storage": "npm:3.1001.0"
     "@aws-sdk/s3-request-presigner": "npm:3.1001.0"
-    "@azure/identity": "npm:^4.5.0"
     "@azure/msal-node": "npm:^5.2.3"
     "@blocknote/server-util": "npm:^0.51.4"
     "@clickhouse/client": "npm:^1.18.1"
@@ -50104,7 +49967,9 @@ __metadata:
     unzipper: "npm:^0.12.3"
     uuid: "npm:^11.1.1"
     zod: "npm:^4.1.11"
-  dependenciesMeta:
+  peerDependencies:
+    "@azure/identity": ^4.5.0
+  peerDependenciesMeta:
     "@azure/identity":
       optional: true
   languageName: unknown

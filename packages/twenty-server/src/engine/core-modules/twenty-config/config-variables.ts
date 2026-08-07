@@ -1260,7 +1260,7 @@ export class ConfigVariables {
   @ConfigVariablesMetadata({
     group: ConfigVariablesGroup.ADVANCED_SETTINGS,
     description:
-      'How to authenticate to Postgres. PASSWORD uses the credentials in PG_DATABASE_URL. AZURE_MANAGED_IDENTITY presents a short-lived Microsoft Entra ID token instead, for Azure Database for PostgreSQL servers with password authentication disabled (requires the optional @azure/identity package, and a passwordless PG_DATABASE_URL).',
+      'How to authenticate to Postgres. PASSWORD uses the credentials in PG_DATABASE_URL. AZURE_MANAGED_IDENTITY presents a short-lived Microsoft Entra ID token instead, for Azure Database for PostgreSQL servers with password authentication disabled. Needs a passwordless PG_DATABASE_URL and the @azure/identity package, which is an optional peer dependency and is not installed by default.',
     type: ConfigVariableType.ENUM,
     options: Object.values(DatabaseAuthMode),
     isEnvOnly: true,

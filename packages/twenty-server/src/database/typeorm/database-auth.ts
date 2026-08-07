@@ -32,6 +32,16 @@ const AZURE_POSTGRES_TOKEN_SCOPE =
 const TOKEN_EXPIRY_SKEW_MS = 5 * 60 * 1000;
 
 /**
+ * Upper bound on a single token acquisition. The identity endpoint is
+ * link-local and normally answers in milliseconds, so this only ever fires when
+ * something is wrong. It matters because the in-flight request is *shared*: an
+ * acquisition that never settles would otherwise park every subsequent
+ * connection attempt behind it indefinitely, and `pg` applies no connection
+ * timeout of its own unless one is configured.
+ */
+const TOKEN_REQUEST_TIMEOUT_MS = 30 * 1000;
+
+/**
  * Resolved through a `string`-typed identifier rather than a literal so that
  * the server still typechecks and builds when the optional `@azure/identity`
  * dependency is not installed.
@@ -103,6 +113,25 @@ const isUsable = (token: AccessToken | null): token is AccessToken =>
   token !== null &&
   token.expiresOnTimestamp - TOKEN_EXPIRY_SKEW_MS > Date.now();
 
+const withTimeout = async <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string,
+): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 const fetchAccessToken = async (): Promise<AccessToken> => {
   if (credentialPromise === null) {
     credentialPromise = loadAzureCredential().catch((error) => {
@@ -114,7 +143,11 @@ const fetchAccessToken = async (): Promise<AccessToken> => {
   }
 
   const credential = await credentialPromise;
-  const token = await credential.getToken(AZURE_POSTGRES_TOKEN_SCOPE);
+  const token = await withTimeout(
+    credential.getToken(AZURE_POSTGRES_TOKEN_SCOPE),
+    TOKEN_REQUEST_TIMEOUT_MS,
+    `Timed out after ${TOKEN_REQUEST_TIMEOUT_MS}ms acquiring a Microsoft Entra ID access token for Postgres.`,
+  );
 
   if (token === null) {
     throw new Error(
