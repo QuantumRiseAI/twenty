@@ -1,0 +1,148 @@
+# Fork-only. Builds the `twenty-server` image from this fork and pushes it to a
+# Quantum Rise ACR.
+#
+# Named `qr-` so it is obviously ours and cannot collide with an upstream
+# workflow when this fork is rebased. Upstream's own 45 workflows stay disabled
+# on the fork deliberately — the server suite alone is 4 unit shards plus 16
+# integration shards, which is not worth carrying for a ~40-line patch, and the
+# front-end jobs want `ubuntu-latest-8-cores` runners the fork does not have.
+name: QR / Publish image
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub Environment holding the ACR push credentials
+        required: false
+        default: dev-acr-push
+
+permissions: {}
+
+concurrency:
+  group: qr-publish-image-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish-image:
+    name: Build and push twenty-server
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: ${{ inputs.environment || 'dev-acr-push' }}
+    permissions:
+      contents: read
+      id-token: write # azure/login OIDC for the <env>-acr-push identity
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      # The image build is large; the default runner image ships SDKs this repo
+      # does not use and the build otherwise risks ENOSPC. Same list upstream
+      # uses in .github/actions/yarn-install.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+
+      # `@azure/identity` is an OPTIONAL PEER dependency upstream, which means it
+      # is deliberately not installed for anyone who does not use
+      # PG_DATABASE_AUTH_MODE=AZURE_MANAGED_IDENTITY. We do use it, and the
+      # Dockerfile's `yarn workspaces focus --production` will not install an
+      # optional peer, so promote it to a regular dependency for this image.
+      #
+      # Done here rather than committed: the source tree stays byte-identical to
+      # upstream, so rebasing this fork stays clean and the merged patch remains
+      # exactly what we would offer upstream.
+      - name: Vendor the optional @azure/identity peer dependency
+        run: |
+          set -euo pipefail
+          pkg=packages/twenty-server/package.json
+          version=$(jq -er '.peerDependencies["@azure/identity"]' "$pkg")
+          echo "pinning @azure/identity $version as a regular dependency"
+          jq --arg v "$version" '.dependencies["@azure/identity"] = $v' "$pkg" > "$pkg.tmp"
+          mv "$pkg.tmp" "$pkg"
+          corepack enable
+          # Resolve it into yarn.lock without linking node_modules; the Docker
+          # build does its own install from the lockfile.
+          yarn install --mode=update-lockfile
+
+      - name: Azure login (OIDC)
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: ACR login
+        env:
+          ACR_NAME: ${{ secrets.ACR_NAME }}
+        run: az acr login --name "$ACR_NAME"
+
+      - name: Build and push
+        id: build
+        env:
+          ACR_NAME: ${{ secrets.ACR_NAME }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          tag="sha-${SOURCE_SHA}"
+          image="${ACR_NAME}.azurecr.io/twenty:${tag}"
+
+          # `--target twenty-server` skips the memory-hungry frontend build. The
+          # server image embeds no UI; the probe only needs the server and the
+          # worker, which are the same image with a different command.
+          docker build --pull --platform linux/amd64 \
+            --target twenty-server \
+            -f packages/twenty-docker/twenty/Dockerfile \
+            -t "$image" .
+          docker push "$image"
+
+          repo="${image%:*}"
+          repo_digest=$(docker inspect "$image" --format '{{range .RepoDigests}}{{println .}}{{end}}' \
+            | grep -F "${repo}@" | head -n1)
+          if [ -z "$repo_digest" ]; then
+            echo "::error::could not resolve pushed digest for $repo" >&2
+            exit 1
+          fi
+
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "repo_digest=$repo_digest" >> "$GITHUB_OUTPUT"
+          echo "digest=${repo_digest#*@}" >> "$GITHUB_OUTPUT"
+
+      # Confirms the vendoring step actually landed in the image, so a silent
+      # regression here shows up as a red build rather than a runtime
+      # "package could not be loaded" on the first token acquisition.
+      - name: Verify @azure/identity is present in the image
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint node "$IMAGE" \
+            -e "require.resolve('@azure/identity'); console.log('@azure/identity resolves inside the image')"
+
+      - name: Summary
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+          REPO_DIGEST: ${{ steps.build.outputs.repo_digest }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          {
+            echo "### Pushed twenty-server"
+            echo ""
+            echo "- image: \`$IMAGE\`"
+            echo "- digest: \`$REPO_DIGEST\`"
+            echo ""
+            echo "IMAGE_DIGEST=\`$DIGEST\`"
+            echo ""
+            echo "Next: pin this digest in \`QuantumRiseAI/infra\`."
+          } >> "$GITHUB_STEP_SUMMARY"
