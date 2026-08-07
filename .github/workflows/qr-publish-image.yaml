@@ -74,7 +74,16 @@ jobs:
           corepack enable
           # Resolve it into yarn.lock without linking node_modules; the Docker
           # build does its own install from the lockfile.
-          yarn install --mode=update-lockfile
+          #
+          # Constraints are disabled for this one call. `.yarnrc.yml` sets
+          # `enableConstraintsChecks: true`, so any install evaluates
+          # `yarn.config.cjs`, which `require`s `@yarnpkg/types` — a package that
+          # is not present on a clean checkout with no node_modules, and which
+          # `--mode=update-lockfile` never installs because it skips the link
+          # step. The check has nothing to say about a build-time-only
+          # dependency edit that is never committed, so skipping it here costs
+          # no coverage.
+          YARN_ENABLE_CONSTRAINTS_CHECKS=false yarn install --mode=update-lockfile
 
       - name: Azure login (OIDC)
         uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
