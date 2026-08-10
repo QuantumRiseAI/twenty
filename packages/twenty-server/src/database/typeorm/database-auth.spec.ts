@@ -220,6 +220,77 @@ describe('database-auth', () => {
     });
   });
 
+  // The tests above build the pg config the way PostgresDriver.createPool
+  // *would*. That is not the same as letting TypeORM build it, and the
+  // difference is not academic: an earlier version of this module cleared
+  // `connectionString` while assuming TypeORM would supply host/user/database
+  // separately. It does not, so the pool silently fell back to pg's defaults
+  // and the app connected to localhost:5432 in production while every test
+  // here passed. These drive a real DataSource instead.
+  describe('a real TypeORM DataSource', () => {
+    const connectVia = async (url: string) => {
+      // oxlint-disable-next-line typescript/no-require-imports
+      const { DataSource } = require('typeorm') as typeof import('typeorm');
+      const { buildDatabaseAuthExtra } = loadModule();
+
+      const dataSource = new DataSource({
+        url,
+        type: 'postgres',
+        logging: [],
+        extra: buildDatabaseAuthExtra(url),
+      });
+
+      try {
+        await dataSource.initialize();
+
+        throw new Error('expected the connection to fail');
+      } catch (error) {
+        // `address` and `port` are present on a socket-level failure but are
+        // not part of the ErrnoException type.
+        return error as NodeJS.ErrnoException & {
+          address?: string;
+          port?: number;
+        };
+      }
+    };
+
+    // Port 1 is reserved and nothing listens on it, so this fails fast without
+    // touching the network. What matters is *where* it fails: the address and
+    // port have to be the ones from the URL, not pg's localhost:5432 default.
+    it('connects to the host and port from the URL, not pg defaults', async () => {
+      process.env.PG_DATABASE_AUTH_MODE =
+        DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+
+      const error = await connectVia('postgres://mi@127.0.0.1:1/twenty');
+
+      expect(error.code).toBe('ECONNREFUSED');
+      expect(error.port).toBe(1);
+    });
+
+    it('refuses a URL it cannot read a target from, rather than defaulting', () => {
+      process.env.PG_DATABASE_AUTH_MODE =
+        DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+
+      const { buildDatabaseAuthExtra } = loadModule();
+
+      expect(() => buildDatabaseAuthExtra('not-a-url')).toThrow(
+        /no host, user and database could be read/,
+      );
+    });
+
+    it('carries the target through to the pg config', () => {
+      process.env.PG_DATABASE_AUTH_MODE =
+        DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+
+      expect(loadModule().buildDatabaseAuthExtra(AZURE_URL)).toMatchObject({
+        host: 'qr-pg.postgres.database.azure.com',
+        port: 5432,
+        user: 'twenty-mi',
+        database: 'twenty',
+      });
+    });
+  });
+
   describe('getAzureDatabaseAccessToken', () => {
     const inOneHour = () => Date.now() + 60 * 60 * 1000;
 

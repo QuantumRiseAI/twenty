@@ -200,6 +200,49 @@ const readSslMode = (url: string | undefined): string | undefined => {
   }
 };
 
+type ConnectionTarget = {
+  host: string;
+  port: number;
+  user: string;
+  database: string;
+};
+
+/**
+ * Where to connect, taken from the connection URL.
+ *
+ * Necessary because clearing `connectionString` (see `buildDatabaseAuthExtra`)
+ * also discards the only copy of the connection target that reaches `pg`.
+ * TypeORM does parse the URL into its own credentials, but those are not what
+ * ends up in the pool config, so relying on them silently degrades to `pg`'s
+ * defaults — localhost:5432 — which fails as a connection refused a long way
+ * from its cause.
+ */
+const readConnectionTarget = (
+  url: string | undefined,
+): ConnectionTarget | undefined => {
+  if (url === undefined || url === '') {
+    return undefined;
+  }
+
+  try {
+    const parsed = new URL(url);
+    const database = decodeURIComponent(parsed.pathname).replace(/^\//, '');
+
+    if (parsed.hostname === '' || parsed.username === '' || database === '') {
+      return undefined;
+    }
+
+    return {
+      host: parsed.hostname,
+      port: parsed.port === '' ? 5432 : Number(parsed.port),
+      user: decodeURIComponent(parsed.username),
+      database,
+    };
+  } catch {
+    return undefined;
+  }
+};
+
 type SslOptions = { rejectUnauthorized: boolean };
 
 const resolveSsl = (url: string | undefined): SslOptions => {
@@ -263,6 +306,13 @@ const resolveAuthMode = (): DatabaseAuthMode => {
  *    during that same re-parse. Clearing `connectionString` without restoring
  *    `ssl` drops `pg` to its `ssl: false` default and sends the access token
  *    across the wire in cleartext.
+ *  - `host` / `port` / `user` / `database` — likewise the only copy of the
+ *    connection *target* that reaches `pg` comes from that re-parse. TypeORM
+ *    does parse the URL into its own credentials, but those are not what lands
+ *    in the pool config, so omitting these silently degrades to `pg`'s
+ *    defaults and the app connects to localhost:5432. That failure surfaces as
+ *    a connection refused a long way from its cause, which is why an
+ *    unparseable URL throws here instead.
  */
 export const buildDatabaseAuthExtra = (
   url?: string,
@@ -271,9 +321,18 @@ export const buildDatabaseAuthExtra = (
     return {};
   }
 
+  const target = readConnectionTarget(url);
+
+  if (target === undefined) {
+    throw new Error(
+      `PG_DATABASE_AUTH_MODE is "${DatabaseAuthMode.AZURE_MANAGED_IDENTITY}" but no host, user and database could be read from the connection URL. Expected a URL of the form postgres://<user>@<host>:5432/<database>?sslmode=require.`,
+    );
+  }
+
   return {
     password: getAzureDatabaseAccessToken,
     connectionString: undefined,
     ssl: resolveSsl(url),
+    ...target,
   };
 };
