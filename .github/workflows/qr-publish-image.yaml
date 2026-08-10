@@ -18,7 +18,7 @@ on:
       environment:
         description: GitHub Environment holding the ACR push credentials
         required: false
-        default: dev-acr-push
+        default: production-acr-push
 
 permissions: {}
 
@@ -31,7 +31,7 @@ jobs:
     name: Build and push twenty-server
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    environment: ${{ inputs.environment || 'dev-acr-push' }}
+    environment: ${{ inputs.environment || 'production-acr-push' }}
     permissions:
       contents: read
       id-token: write # azure/login OIDC for the <env>-acr-push identity
