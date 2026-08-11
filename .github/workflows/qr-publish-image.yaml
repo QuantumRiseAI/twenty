@@ -107,11 +107,17 @@ jobs:
           tag="sha-${SOURCE_SHA}"
           image="${ACR_NAME}.azurecr.io/twenty:${tag}"
 
-          # `--target twenty-server` skips the memory-hungry frontend build. The
-          # server image embeds no UI; the probe only needs the server and the
-          # worker, which are the same image with a different command.
+          # `--target twenty` is server + frontend. The earlier `twenty-server`
+          # target omits the UI entirely, which was right while this image only
+          # had to serve probes and a worker, and wrong for a CRM people use.
+          #
+          # The frontend build is the memory-hungry part (the Dockerfile runs it
+          # with --max-old-space-size=8192), which is why upstream puts its
+          # front-end CI on larger runners. If this OOMs on a standard runner,
+          # the Dockerfile supports pre-building: `npx nx build twenty-front`
+          # before `docker build` makes the stage reuse the existing output.
           docker build --pull --platform linux/amd64 \
-            --target twenty-server \
+            --target twenty \
             -f packages/twenty-docker/twenty/Dockerfile \
             -t "$image" .
           docker push "$image"
