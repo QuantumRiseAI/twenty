@@ -1,0 +1,203 @@
+# Fork-only. Merges twentyhq/twenty into this fork weekly and opens a PR.
+#
+# WHY WEEKLY, AND WHY A PR. Upstream moves fast — roughly 20 commits a day — so
+# the gap compounds, and with it the risk of any single sync. Weekly keeps each
+# merge small enough that a human can actually read it.
+#
+# It never merges on its own, for one specific reason: Twenty's database
+# migrations are effectively one-way. Taking a sync means taking a schema change
+# that is awkward to reverse, so a person decides when, having taken a Postgres
+# restore point first.
+#
+# WHY THE CHECKS RUN HERE rather than on the PR. A PR opened with GITHUB_TOKEN
+# does not trigger `pull_request` workflows — that is GitHub's loop-prevention
+# rule, not something we can configure away. So qr-check-fork-patches would sit
+# silently unrun on exactly the PRs that need it most. This job therefore runs
+# the assertions and the patch tests itself, before opening anything, and says
+# so in the PR body.
+#
+# The image build is the one check that cannot run here — it takes most of an
+# hour. Dispatch `QR / Publish image` against the sync branch before merging;
+# that build does a clean install from the merged lockfile and is the only
+# authoritative check that the tree still compiles.
+name: QR / Sync upstream
+
+on:
+  schedule:
+    # Mondays, 06:00 UTC — a fresh PR at the start of the week rather than one
+    # that ages over a weekend.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Upstream ref to merge (branch or tag). Defaults to main.
+        required: false
+        default: main
+
+permissions: {}
+
+concurrency:
+  group: qr-sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Merge upstream and open a PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # Full history: a shallow clone has no merge base with upstream, and
+          # git reports unrelated histories rather than a useful diff.
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        env:
+          UPSTREAM_REF: ${{ inputs.ref || 'main' }}
+        run: |
+          set -euo pipefail
+          git remote add upstream https://github.com/twentyhq/twenty.git
+          git fetch --no-tags upstream "$UPSTREAM_REF"
+
+      - name: Check whether there is anything to merge
+        id: gap
+        env:
+          UPSTREAM_REF: ${{ inputs.ref || 'main' }}
+        run: |
+          set -euo pipefail
+          behind=$(git rev-list --count HEAD..FETCH_HEAD)
+          echo "behind=$behind" >> "$GITHUB_OUTPUT"
+          echo "$behind upstream commit(s) not in this fork"
+          if [ "$behind" -eq 0 ]; then
+            echo "Already up to date; nothing to do."
+          fi
+
+      - name: Merge
+        id: merge
+        if: steps.gap.outputs.behind != '0'
+        env:
+          UPSTREAM_REF: ${{ inputs.ref || 'main' }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -B qr-sync-upstream
+
+          # A conflicted merge still opens a PR — a human resolving conflicts is
+          # the normal case and is much easier from a branch than from scratch.
+          # The PR body says which happened.
+          if git merge --no-ff -m "Merge upstream/${UPSTREAM_REF} into the fork" FETCH_HEAD; then
+            echo "conflicts=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "conflicts=true" >> "$GITHUB_OUTPUT"
+            git add -A
+            git commit -m "Merge upstream/${UPSTREAM_REF} into the fork (WITH CONFLICTS)
+
+          Conflict markers are committed deliberately, so the PR shows exactly
+          what needs resolving. Do not merge until they are gone."
+          fi
+
+      - name: Assert fork patches survived
+        id: patches
+        if: steps.gap.outputs.behind != '0'
+        continue-on-error: true
+        run: ./qr/assert-fork-patches.sh
+
+      - name: Setup Node.js
+        if: steps.gap.outputs.behind != '0'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+
+      - name: Test the patched code
+        id: tests
+        if: steps.gap.outputs.behind != '0' && steps.merge.outputs.conflicts == 'false'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          corepack enable
+          yarn install --immutable
+          # twenty-shared is consumed through its build output, so an unbuilt or
+          # stale dist makes the server package look broken in ways that have
+          # nothing to do with the merge. Build it before testing.
+          npx nx build twenty-shared
+          cd packages/twenty-server
+          npx jest --silent --testPathPattern "(database-auth|twenty-config)"
+
+      - name: Push the branch
+        if: steps.gap.outputs.behind != '0'
+        run: git push --force origin qr-sync-upstream
+
+      - name: Open or update the PR
+        if: steps.gap.outputs.behind != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEHIND: ${{ steps.gap.outputs.behind }}
+          CONFLICTS: ${{ steps.merge.outputs.conflicts }}
+          PATCHES: ${{ steps.patches.outcome }}
+          TESTS: ${{ steps.tests.outcome }}
+          UPSTREAM_REF: ${{ inputs.ref || 'main' }}
+        run: |
+          set -euo pipefail
+
+          verdict () { [ "$1" = "success" ] && echo "passed" || echo "**FAILED**"; }
+
+          if [ "$CONFLICTS" = "true" ]; then
+            conflict_line="**Merged with conflicts.** Conflict markers are committed so the diff shows what needs resolving. Tests were skipped."
+          else
+            conflict_line="Merged cleanly, no conflicts."
+          fi
+
+          body=$(cat <<EOF
+          Automated weekly sync of \`twentyhq/twenty\` (\`$UPSTREAM_REF\`) into this fork. **$BEHIND** upstream commit(s).
+
+          $conflict_line
+
+          | Check | Result |
+          |---|---|
+          | Fork patches present and wired in | $(verdict "$PATCHES") |
+          | database-auth + twenty-config tests | $(verdict "$TESTS") |
+
+          These ran inside the sync job rather than as PR checks. A PR opened with \`GITHUB_TOKEN\` does not trigger \`pull_request\` workflows — GitHub's loop prevention — so \`QR / Fork patches\` will not appear below on its own.
+
+          ## Before merging
+
+          1. **Dispatch \`QR / Publish image\` against \`qr-sync-upstream\`.** It does a clean install from the merged lockfile and compiles everything; it is the only authoritative check that the tree still builds. A local typecheck against stale \`node_modules\` is not a substitute.
+          2. **Take a Postgres restore point.** Twenty's migrations are effectively one-way, so this is the step that makes a sync hard to undo.
+          3. After merging: bump the digest in \`QuantumRiseAI/infra\`, run \`twenty-migrate\`, then verify sign-in, \`/\` returning 200, and cron registration.
+
+          ## If the patch check failed
+
+          An upstream change removed or refactored past one of our patches. That is the failure this sync process exists to catch: it does not produce a conflict, and it fails at runtime rather than at build time. Restore the patch on this branch before merging.
+          EOF
+          )
+
+          existing=$(gh pr list --head qr-sync-upstream --state open --json number --jq '.[0].number // empty')
+          title="Merge upstream into the fork ($BEHIND commits)"
+          if [ -n "$existing" ]; then
+            gh pr edit "$existing" --title "$title" --body "$body"
+            echo "updated PR #$existing"
+          else
+            gh pr create --base main --head qr-sync-upstream --title "$title" --body "$body"
+          fi
+
+      - name: Fail if the checks did not pass
+        if: steps.gap.outputs.behind != '0'
+        env:
+          PATCHES: ${{ steps.patches.outcome }}
+          TESTS: ${{ steps.tests.outcome }}
+          CONFLICTS: ${{ steps.merge.outputs.conflicts }}
+        run: |
+          # The PR is opened either way — a red sync run that leaves a branch to
+          # fix is more useful than no branch at all — but the run itself goes
+          # red so it shows up as a notification rather than an unread PR.
+          set -euo pipefail
+          [ "$CONFLICTS" = "true" ] && { echo "::error::merge had conflicts"; exit 1; }
+          [ "$PATCHES" = "success" ] || { echo "::error::fork patch assertions failed"; exit 1; }
+          [ "$TESTS" = "success" ] || { echo "::error::patch tests failed"; exit 1; }
+          echo "sync is clean"

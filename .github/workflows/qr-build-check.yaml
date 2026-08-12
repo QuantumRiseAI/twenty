@@ -1,0 +1,92 @@
+# Fork-only. Builds the image without pushing it, to prove the tree compiles.
+#
+# WHY THIS IS SEPARATE from qr-publish-image. That workflow holds the
+# `production-acr-push` environment and an OIDC credential that can write to our
+# registry. This one takes no secrets, no environment and no `id-token`
+# permission, so it is safe to run on a pull request. Splitting them is cheaper
+# than reasoning about which steps may touch a credential on an untrusted ref.
+#
+# WHY IT MATTERS. A local `tsc --noEmit` runs against whatever `node_modules`
+# happens to be on disk. During the 2026-08-12 sync that produced fifteen
+# errors that did not exist — a stale `twenty-shared/dist` and an upstream
+# dependency we had not installed. A clean install from the merged lockfile is
+# the only check that means anything, and this is it.
+#
+# NOT AUTOMATIC ON SYNC PRs. A PR opened by qr-sync-upstream uses GITHUB_TOKEN,
+# and GitHub does not raise `pull_request` events for those. Dispatch this
+# workflow against the sync branch by hand — the sync PR body says so.
+name: QR / Build check
+
+on:
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: qr-build-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build the image (no push)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+
+      # Mirrors qr-publish-image. Kept in step because a build that skipped this
+      # would pass while the published image failed on its first token
+      # acquisition — the opposite of what a build check is for.
+      - name: Vendor the optional @azure/identity peer dependency
+        run: |
+          set -euo pipefail
+          pkg=packages/twenty-server/package.json
+          version=$(jq -er '.peerDependencies["@azure/identity"]' "$pkg")
+          jq --arg v "$version" '.dependencies["@azure/identity"] = $v' "$pkg" > "$pkg.tmp"
+          mv "$pkg.tmp" "$pkg"
+          corepack enable
+          YARN_ENABLE_CONSTRAINTS_CHECKS=false yarn install --mode=update-lockfile
+
+      - name: Build
+        run: |
+          set -euo pipefail
+          docker build --pull --platform linux/amd64 \
+            --target twenty \
+            -f packages/twenty-docker/twenty/Dockerfile \
+            -t twenty:build-check .
+
+      - name: Verify @azure/identity resolves inside the image
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint node twenty:build-check \
+            -e "require.resolve('@azure/identity'); console.log('@azure/identity resolves inside the image')"
+
+      - name: Summary
+        run: |
+          {
+            echo "### Build check passed"
+            echo ""
+            echo "The tree compiles from a clean install of the committed lockfile,"
+            echo "and \`@azure/identity\` resolves inside the resulting image."
+            echo ""
+            echo "Nothing was pushed. Merging still runs \`QR / Publish image\`,"
+            echo "which produces the digest to pin in \`QuantumRiseAI/infra\`."
+          } >> "$GITHUB_STEP_SUMMARY"

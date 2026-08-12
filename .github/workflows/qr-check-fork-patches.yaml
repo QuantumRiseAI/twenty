@@ -1,0 +1,31 @@
+# Fork-only. Fails if one of this fork's patches has gone missing.
+#
+# Named `qr-` so it is obviously ours and cannot collide with an upstream
+# workflow when this fork is merged. Upstream's own workflows stay disabled here
+# deliberately — see qr-publish-image.yaml.
+#
+# Cheap enough to run on everything: no install, no build, just greps.
+name: QR / Fork patches
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  assert:
+    name: Assert fork patches are present
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Assert fork patches
+        run: ./qr/assert-fork-patches.sh
