@@ -275,6 +275,16 @@ export class ConfigVariables {
   @ConfigVariablesMetadata({
     group: ConfigVariablesGroup.MICROSOFT_AUTH,
     isSensitive: false,
+    description:
+      'Microsoft identity platform tenant to authenticate against. `common` (the default) accepts both work/school and personal accounts. Set this to a directory (tenant) ID to restrict sign-in to one organisation — which single-tenant app registrations require, since those cannot use the `common` endpoint at all (AADSTS50194). `organizations` and `consumers` are also accepted.',
+    type: ConfigVariableType.STRING,
+  })
+  @IsOptional()
+  AUTH_MICROSOFT_TENANT_ID = 'common';
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.MICROSOFT_AUTH,
+    isSensitive: false,
     description: 'Callback URL for Microsoft authentication',
     type: ConfigVariableType.STRING,
   })
