@@ -29,7 +29,6 @@ import {
 } from 'src/engine/core-modules/message-queue/interfaces/message-queue-job.interface';
 import { type MessageQueueWorkerOptions } from 'src/engine/core-modules/message-queue/interfaces/message-queue-worker-options.interface';
 
-import { QUEUE_RETENTION } from 'src/engine/core-modules/message-queue/constants/queue-retention.constants';
 import { MESSAGE_QUEUE_WORKER_CONFIG } from 'src/engine/core-modules/message-queue/message-queue-worker-config.constant';
 import { type MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { getJobKey } from 'src/engine/core-modules/message-queue/utils/get-job-key.util';
@@ -63,6 +62,29 @@ export class BullMQDriver
     private metricsService: MetricsService,
     private twentyConfigService: TwentyConfigService,
   ) {}
+
+  // Read per-call rather than cached in the constructor, so changing retention
+  // takes effect on the next enqueue instead of needing a restart.
+  //
+  // These bound how much of Redis the queue holds: each queue keeps up to
+  // `count` finished jobs, so the ceiling is roughly
+  // queues x (completed + failed) x job size, and it does not scale down with a
+  // quiet instance. Lower them when Redis is the constraint.
+  private retentionOptions(): Pick<
+    JobsOptions,
+    'removeOnComplete' | 'removeOnFail'
+  > {
+    return {
+      removeOnComplete: {
+        age: this.twentyConfigService.get('QUEUE_COMPLETED_MAX_AGE'),
+        count: this.twentyConfigService.get('QUEUE_COMPLETED_MAX_COUNT'),
+      },
+      removeOnFail: {
+        age: this.twentyConfigService.get('QUEUE_FAILED_MAX_AGE'),
+        count: this.twentyConfigService.get('QUEUE_FAILED_MAX_COUNT'),
+      },
+    };
+  }
 
   onModuleInit() {
     this.metricsService.createMultiObservableGauge({
@@ -292,14 +314,7 @@ export class BullMQDriver
     const queueOptions: JobsOptions = {
       priority: options?.priority,
       repeat: options?.repeat,
-      removeOnComplete: {
-        age: QUEUE_RETENTION.completedMaxAge,
-        count: QUEUE_RETENTION.completedMaxCount,
-      },
-      removeOnFail: {
-        age: QUEUE_RETENTION.failedMaxAge,
-        count: QUEUE_RETENTION.failedMaxCount,
-      },
+      ...this.retentionOptions(),
     };
 
     await this.queueMap[queueName].upsertJobScheduler(
@@ -340,14 +355,7 @@ export class BullMQDriver
       priority:
         options?.priority ?? MESSAGE_QUEUE_WORKER_CONFIG[queueName].priority,
       attempts: 1 + (options?.retryLimit || 0),
-      removeOnComplete: {
-        age: QUEUE_RETENTION.completedMaxAge,
-        count: QUEUE_RETENTION.completedMaxCount,
-      },
-      removeOnFail: {
-        age: QUEUE_RETENTION.failedMaxAge,
-        count: QUEUE_RETENTION.failedMaxCount,
-      },
+      ...this.retentionOptions(),
       delay: options?.delay,
     };
   }
