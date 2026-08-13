@@ -39,6 +39,7 @@ import {
   LoggerDriverType,
   type TwentyLogLevel,
 } from 'src/engine/core-modules/logger/interfaces';
+import { QUEUE_RETENTION } from 'src/engine/core-modules/message-queue/constants/queue-retention.constants';
 import { type MeterDriver } from 'src/engine/core-modules/metrics/types/meter-driver.type';
 import { CastToLogLevelArray } from 'src/engine/core-modules/twenty-config/decorators/cast-to-log-level-array.decorator';
 import { CastToMeterDriverArray } from 'src/engine/core-modules/twenty-config/decorators/cast-to-meter-driver.decorator';
@@ -1378,6 +1379,46 @@ export class ConfigVariables {
   })
   @CastToPositiveNumber()
   CACHE_STORAGE_TTL: number = 3600 * 24 * 7;
+
+  // Queue retention. These bound how much of Redis BullMQ holds: every queue
+  // keeps up to `count` finished jobs, so the ceiling is roughly
+  // queues x (completed + failed) x job size, independent of how many users you
+  // have. Worth lowering when Redis is the constraint — completed jobs have
+  // little diagnostic value once they have drained, whereas failed ones are what
+  // you debug from, so they are separate knobs on purpose.
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.ADVANCED_SETTINGS,
+    description:
+      'How long a completed job is kept in the queue, in seconds. Lower this when Redis memory is constrained.',
+    type: ConfigVariableType.NUMBER,
+  })
+  @CastToPositiveNumber()
+  QUEUE_COMPLETED_MAX_AGE: number = QUEUE_RETENTION.completedMaxAge;
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.ADVANCED_SETTINGS,
+    description:
+      'How many completed jobs are kept per queue. The dominant term in queue memory use.',
+    type: ConfigVariableType.NUMBER,
+  })
+  @CastToPositiveNumber()
+  QUEUE_COMPLETED_MAX_COUNT: number = QUEUE_RETENTION.completedMaxCount;
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.ADVANCED_SETTINGS,
+    description: 'How long a failed job is kept in the queue, in seconds.',
+    type: ConfigVariableType.NUMBER,
+  })
+  @CastToPositiveNumber()
+  QUEUE_FAILED_MAX_AGE: number = QUEUE_RETENTION.failedMaxAge;
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.ADVANCED_SETTINGS,
+    description: 'How many failed jobs are kept per queue.',
+    type: ConfigVariableType.NUMBER,
+  })
+  @CastToPositiveNumber()
+  QUEUE_FAILED_MAX_COUNT: number = QUEUE_RETENTION.failedMaxCount;
 
   @ConfigVariablesMetadata({
     group: ConfigVariablesGroup.SERVER_CONFIG,

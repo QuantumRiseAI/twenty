@@ -10,9 +10,9 @@ import {
   jobStateEnumToBullMQ,
 } from 'src/engine/core-modules/admin-panel/enums/job-state.enum';
 import { InternalServerError } from 'src/engine/core-modules/graphql/utils/graphql-errors.util';
-import { QUEUE_RETENTION } from 'src/engine/core-modules/message-queue/constants/queue-retention.constants';
 import { type MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { RedisClientService } from 'src/engine/core-modules/redis-client/redis-client.service';
+import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 
 type JobOperationResult = {
   jobId: string;
@@ -22,7 +22,10 @@ type JobOperationResult = {
 
 @Injectable()
 export class AdminPanelQueueService {
-  constructor(private readonly redisClient: RedisClientService) {}
+  constructor(
+    private readonly redisClient: RedisClientService,
+    private readonly twentyConfigService: TwentyConfigService,
+  ) {}
 
   async getQueueJobs(
     queueName: MessageQueue,
@@ -103,7 +106,21 @@ export class AdminPanelQueueService {
         count: jobs.length,
         totalCount: totalCountForState,
         hasMore,
-        retentionConfig: { ...QUEUE_RETENTION },
+        // Read from config, not the constants module: retention is configurable
+        // per deployment, and the panel would otherwise report defaults the queue
+        // is not actually using.
+        retentionConfig: {
+          completedMaxAge: this.twentyConfigService.get(
+            'QUEUE_COMPLETED_MAX_AGE',
+          ),
+          completedMaxCount: this.twentyConfigService.get(
+            'QUEUE_COMPLETED_MAX_COUNT',
+          ),
+          failedMaxAge: this.twentyConfigService.get('QUEUE_FAILED_MAX_AGE'),
+          failedMaxCount: this.twentyConfigService.get(
+            'QUEUE_FAILED_MAX_COUNT',
+          ),
+        },
       };
     } catch (error) {
       throw new InternalServerError(
