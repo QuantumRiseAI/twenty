@@ -1,3 +1,4 @@
+import { QUEUE_RETENTION } from 'src/engine/core-modules/message-queue/constants/queue-retention.constants';
 import { BullMQDriver } from 'src/engine/core-modules/message-queue/drivers/bullmq.driver';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 
@@ -19,11 +20,22 @@ jest.mock('uuid', () => ({ v4: () => 'generated-uuid-000000000000000000000' }));
 
 const WAITING_JOB_ID = 'sync-catalog-ws-1-5c98b035-5b09-4550-a4fb-b52056c494d1';
 
+// The enqueue path reads job retention from the config service.
+const twentyConfigService = {
+  get: (key: string) =>
+    ({
+      QUEUE_COMPLETED_MAX_AGE: QUEUE_RETENTION.completedMaxAge,
+      QUEUE_COMPLETED_MAX_COUNT: QUEUE_RETENTION.completedMaxCount,
+      QUEUE_FAILED_MAX_AGE: QUEUE_RETENTION.failedMaxAge,
+      QUEUE_FAILED_MAX_COUNT: QUEUE_RETENTION.failedMaxCount,
+    })[key],
+};
+
 describe('BullMQDriver deduplication', () => {
   const driver = new BullMQDriver(
     {} as never,
     {} as never,
-    {} as never,
+    twentyConfigService as never,
     {} as never,
   );
 
