@@ -10,6 +10,7 @@ import { Pool, type PoolConfig, types } from 'pg';
 import { DataSource } from 'typeorm';
 import { isDefined } from 'twenty-shared/utils';
 
+import { buildDatabaseAuthExtra } from 'src/database/typeorm/database-auth';
 import {
   DatabasePoolMetricsService,
   DatabasePoolName,
@@ -147,6 +148,8 @@ export class WorkspaceDataSourceService
       ssl: this.twentyConfigService.get('PG_SSL_ALLOW_SELF_SIGNED')
         ? { rejectUnauthorized: false }
         : undefined,
+      // Last, so it can clear `connectionString` and replace `ssl`.
+      ...buildDatabaseAuthExtra(connectionString),
     });
 
     pool.on('error', (error) => {
