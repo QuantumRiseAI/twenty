@@ -47,7 +47,18 @@ Then, in order:
 6. `yarn nx build twenty-server` — catches anything the lazy `@azure/identity` import breaks.
 
 Open a PR against `main` from the sync branch.
-Do not force-push `main` directly: the rebase rewrites published history, and the PR is the only review the fork gets.
+There is no CI on it — upstream's workflows stay disabled here and `QR / Publish image` only triggers on push to `main` — so the checks above are the only verification the change gets.
+
+GitHub will report the PR as conflicting, and the merge button is the wrong tool.
+That is inherent to a rebase: the branch shares no mergeable history with the current `main`, and "Rebase and merge" would replay the patches onto the old base again.
+The PR is for review. Landing is moving `main` onto the reviewed branch:
+
+```sh
+git push --force-with-lease=main:<reviewed main sha> origin qr-sync-upstream-<version>:main
+```
+
+Pin `--force-with-lease` to the SHA the PR was reviewed against, so the push refuses if `main` moved.
+Use a full refspec: `push.default` is `upstream` in this org's checkouts, and a bare `git push origin <branch>` can land somewhere you did not mean.
 
 ### Call Sites Are The Fragile Part
 
