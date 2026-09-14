@@ -291,6 +291,84 @@ describe('database-auth', () => {
     });
   });
 
+  // The workspace ORM builds its `pg` Pool directly instead of going through
+  // TypeORM, so nothing re-applies the URL behind it: whatever this returns is
+  // the whole connection. TLS in particular has no second source here, because
+  // clearing `connectionString` also drops the `sslmode` that would have set it.
+  describe('the pg client the workspace ORM pool builds', () => {
+    const connectionParametersOf = (client: Client) =>
+      (
+        client as unknown as {
+          connectionParameters: {
+            ssl: unknown;
+            host: string;
+            port: number;
+            user: string;
+            database: string;
+          };
+        }
+      ).connectionParameters;
+
+    // Mirrors WorkspaceDataSourceService.createPool: a connection string, the
+    // self-signed escape hatch, then the auth config last.
+    const buildPgClient = (extra: Record<string, unknown>) =>
+      new Client({
+        connectionString: AZURE_URL,
+        ssl: undefined,
+        ...extra,
+      });
+
+    it('keeps the pool pointed at the configured server', () => {
+      process.env.PG_DATABASE_AUTH_MODE =
+        DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+
+      const client = buildPgClient(
+        loadModule().buildDatabaseAuthExtra(AZURE_URL),
+      );
+
+      expect(connectionParametersOf(client)).toMatchObject({
+        host: 'qr-pg.postgres.database.azure.com',
+        port: 5432,
+        user: 'twenty-mi',
+        database: 'twenty',
+      });
+    });
+
+    it('still carries the token callback', () => {
+      process.env.PG_DATABASE_AUTH_MODE =
+        DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+
+      const client = buildPgClient(
+        loadModule().buildDatabaseAuthExtra(AZURE_URL),
+      );
+
+      expect(typeof client.password).toBe('function');
+    });
+
+    it('keeps TLS enabled', () => {
+      process.env.PG_DATABASE_AUTH_MODE =
+        DatabaseAuthMode.AZURE_MANAGED_IDENTITY;
+
+      const client = buildPgClient(
+        loadModule().buildDatabaseAuthExtra(AZURE_URL),
+      );
+
+      expect(connectionParametersOf(client).ssl).toEqual({
+        rejectUnauthorized: true,
+      });
+    });
+
+    it('leaves the pool untouched in PASSWORD mode', () => {
+      const client = buildPgClient(
+        loadModule().buildDatabaseAuthExtra(AZURE_URL),
+      );
+
+      expect(connectionParametersOf(client).host).toBe(
+        'qr-pg.postgres.database.azure.com',
+      );
+    });
+  });
+
   describe('getAzureDatabaseAccessToken', () => {
     const inOneHour = () => Date.now() + 60 * 60 * 1000;
 
