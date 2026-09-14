@@ -125,6 +125,24 @@ Upgrading several minor versions at once is supported.
 `TWENTY_PREVIOUS_VERSIONS` lists every version the current release can upgrade from, and the sequence runs all intermediate steps in order.
 Check that the version being upgraded *from* is in that list before assuming a jump is safe.
 
+### Postgres Extensions Are A Recurring Trap
+
+An upgrade command can require a Postgres extension the server does not allow.
+Azure refuses any `CREATE EXTENSION` for an extension missing from the server-level `azure.extensions` allow-list, even one PostgreSQL ships in core and marks trusted.
+The upgrade then fails partway, with the app already serving new code.
+
+This is what 2.40.0 did: 2.37.0 added a command making user email case-insensitive, which needs `citext`, and the allow-list did not have it.
+
+Nothing in the fork asks for these, so reviewing our own patches will never surface one.
+Grep the versions being crossed before deploying:
+
+```sh
+git grep -iE "CREATE EXTENSION" twenty/v<version> -- packages/twenty-server/src/database/commands
+```
+
+Anything new goes in `extensions` in `environments/production/postgres.tf` in the infra repo.
+`azure.extensions` is a dynamic parameter, so adding to it needs no restart and does not disturb the other apps on the shared server.
+
 ## Backups
 
 The CRM database is `twenty` on the shared `qr-production-pg` server.
