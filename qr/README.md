@@ -102,22 +102,57 @@ az containerapp job start -n twenty-migrate -g qr-twenty-rg
 Run this after every image bump, before the new revision serves traffic.
 The image's entrypoint cannot do this work here: it shells out to `psql`, which knows nothing about the Entra-token patch and dies on a passwordless URL.
 
-The Job runs two things, and both are needed:
+On an existing database the Job runs `yarn command:prod upgrade` and nothing before it.
+That one command runs the whole sequence in version order, *instance* and *workspace* steps interleaved.
+`yarn database:init:prod` runs only when the database is empty (no `core` schema), exactly as the upstream entrypoint gates it.
 
-* `yarn database:init:prod` — `setup-db`, legacy TypeORM migrations, and *instance* commands.
-* `yarn command:prod upgrade` — the full upgrade sequence, including *workspace* commands.
+Never run `database:init:prod` ahead of `upgrade` on an existing database.
+It ends in `run-instance-commands --force`, which executes and records every *instance* step up to the newest version.
+`upgrade` then resumes after the newest recorded step, not from each workspace's own position,
+so every *workspace* step that sits between instance steps is skipped.
+Nothing fails, and `upgrade:status` still reports the workspace as up to date.
 
-The second is not optional, and it is easy to miss.
-`database:init:prod` ends in `run-instance-commands`, which walks the whole cross-version sequence but executes only `fast-instance` and `slow-instance` steps.
-It skips every `workspace` step.
-Upstream carries a `TODO should be replaced by a specific call to the upgrade` on it.
+That is what happened on the 2.32 to 2.40 jump on 2026-09-14:
+
+* About fifty workspace steps were skipped.
+* One was the 2.38 company-domain normalization.
+  Contact auto-creation matches companies on the bare domain, so email and calendar sync created duplicates of existing companies.
+* The Job had run both commands in that order since it was written; infra#1074 moved it to the gated form.
 
 Workspace commands are where per-workspace metadata is reshaped: field backfills, view and layout provisioning, schema syncs.
-The 2.32 to 2.40 jump alone registered about fifty of them.
-Skipping them leaves instance schema at the new version and workspace metadata at the old one, which surfaces as missing fields and broken views rather than as a failed deploy.
+Skipping them leaves instance schema at the new version and workspace metadata at the old one,
+which surfaces as missing fields and broken views rather than as a failed deploy.
 
-Both are safe to re-run.
-The sequence runner resolves a start cursor from the last attempted step, so anything already applied is skipped.
+### Re-Running Does Not Recover A Skipped Step
+
+Re-running the Job is safe, but it only moves forward.
+Its start cursor is already past a skipped step, so the step never runs again on its own.
+
+Run a skipped workspace step by name instead, dry run first:
+
+```sh
+yarn command:prod upgrade:2-38:normalize-company-domain-names --dry-run
+```
+
+Every workspace command accepts `--dry-run` and logs what it would change.
+Dry runs of a *chain* can fail spuriously: a later step may check for a column that an earlier step creates, and a dry run creates nothing.
+
+To run one in production, start `twenty-migrate` from its own template with only the command replaced.
+Overriding with `--command`/`--args` drops the Job's environment, and the run dies connecting to `127.0.0.1:5432`:
+
+```sh
+az containerapp job show -n twenty-migrate -g qr-twenty-rg --query properties.template -o json > template.json
+jq '{containers: [.containers[0] | .command = ["/bin/sh"] | .args = ["-c", "yarn command:prod <command> --dry-run"]]}' \
+  template.json > run.yaml
+az containerapp job start -n twenty-migrate -g qr-twenty-rg --yaml run.yaml
+```
+
+The template holds secret *references*, not values, so writing it to disk exposes nothing.
+Read the output in Log Analytics, table `ContainerAppConsoleLogs_CL`, filtered on `ContainerGroupName_s startswith '<execution name>'`.
+Allow about 90 seconds for ingestion.
+
+Starting a Job can override its command and image, so anyone who can start `twenty-migrate` can run arbitrary code as Twenty's identity.
+Treat the start permission accordingly.
 
 ### Version Jumps
 
