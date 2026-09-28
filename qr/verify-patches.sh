@@ -101,11 +101,13 @@ else
     | sed 's/^/          /'
 fi
 
-# typeorm.module.ts builds its DataSource from typeORMCoreModuleOptions, so it
-# inherits core.datasource's auth rather than calling the helper itself.
+# typeorm.module.ts builds its DataSource from typeORMCoreModuleOptions, and the
+# deferred migration runner spreads the injected core DataSource options, so both
+# inherit core.datasource's auth rather than calling the helper themselves.
 expected_pool_sites="$SRC/database/typeorm/core/core.datasource.ts
 $SRC/database/typeorm/raw/raw.datasource.ts
 $SRC/database/typeorm/typeorm.module.ts
+$SRC/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/deferred-workspace-migration-action-runner.service.ts
 $SRC/engine/twenty-orm/datasource/workspace-data-source.service.ts"
 
 pool_sites=$(src_files "new Pool(\|new DataSource(")
@@ -126,7 +128,10 @@ echo "Queue retention (QUEUE_COMPLETED_MAX_* / QUEUE_FAILED_MAX_*)"
 retention_readers=$(grep -rl --include='*.ts' "QUEUE_RETENTION" "$SRC" \
   | grep -v '\.spec\.ts$' | grep -v '/__tests__/' \
   | grep -v 'constants/queue-retention.constants.ts' | sort)
-expected_retention_readers="$SRC/engine/core-modules/twenty-config/config-variables.ts"
+# The in-memory sync driver prunes its job map with the defaults; it holds no
+# Redis, and message-queue.module-factory.ts always picks BullMQ in production.
+expected_retention_readers="$SRC/engine/core-modules/message-queue/drivers/sync.driver.ts
+$SRC/engine/core-modules/twenty-config/config-variables.ts"
 
 if [ "$retention_readers" = "$expected_retention_readers" ]; then
   pass "QUEUE_RETENTION is read only as the config defaults"
