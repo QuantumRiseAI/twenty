@@ -160,6 +160,25 @@ else
 fi
 
 echo
+echo "OTLP metrics temporality (OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE)"
+
+# One exporter today. A second OTLPMetricExporter upstream would need the same
+# escape hatch, or its counters and histograms vanish at the collector.
+otlp_exporters=$(src_files "new OTLPMetricExporter(")
+unpatched=$(for file in $otlp_exporters; do
+  grep -q "OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE" "$file" || echo "$file"
+done)
+
+if [ -z "$otlp_exporters" ]; then
+  fail "no OTLPMetricExporter found — upstream moved the metrics exporter"
+elif [ -n "$unpatched" ]; then
+  fail "an OTLP metrics exporter ignores the temporality env var:"
+  printf '          %s\n' $unpatched
+else
+  pass "every OTLP metrics exporter defers to the env var when set"
+fi
+
+echo
 if [ "$failures" -eq 0 ]; then
   printf '\033[32mAll fork patches are fully applied.\033[0m\n\n'
   exit 0
