@@ -8,7 +8,7 @@ A release tag is a point upstream has run its own full CI against, which is most
 
 ## What The Fork Carries
 
-Four changes, all in `twenty-server`.
+Five changes, all in `twenty-server`.
 Each is inert by default, so an unconfigured deployment behaves exactly like upstream.
 
 * Entra ID authentication for Postgres (`PG_DATABASE_AUTH_MODE`)
@@ -22,6 +22,9 @@ Each is inert by default, so an unconfigured deployment behaves exactly like ups
 * Configurable BullMQ queue retention (`QUEUE_COMPLETED_MAX_*`, `QUEUE_FAILED_MAX_*`)
   - Retention was hardcoded, and it is what decides how much of Redis the queue occupies.
   - A bulk import once filled a 0.5 GB Redis to 100%; being `NoEviction`, it stopped accepting writes rather than shedding keys.
+* Configurable OTLP metrics temporality (`OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE`, default delta)
+  - Upstream hardcodes delta, which the Prometheus remote-write exporter in our OTel collector drops for every counter and histogram.
+  - Set to `cumulative` to export what managed Prometheus can store. Gauges pass either way.
 * `QR / Publish image` workflow (`.github/workflows/qr-publish-image.yaml`)
   - Builds `twenty-server` and pushes it to the production ACR.
   - Vendors `@azure/identity` at build time, because it is an optional peer dependency that `yarn workspaces focus` skips.

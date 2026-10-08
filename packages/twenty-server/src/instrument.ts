@@ -151,7 +151,13 @@ const meterProvider = new MeterProvider({
           new PeriodicExportingMetricReader({
             exporter: new OTLPMetricExporter({
               url: process.env.OTLP_COLLECTOR_METRICS_ENDPOINT_URL,
-              temporalityPreference: AggregationTemporality.DELTA,
+              // Leaving it unset lets the SDK read the standard env var, which a
+              // Prometheus remote-write backend needs: it drops delta sums and histograms.
+              temporalityPreference: isNonEmptyString(
+                process.env.OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE,
+              )
+                ? undefined
+                : AggregationTemporality.DELTA,
             }),
             exportIntervalMillis: metricExportIntervalMillis,
           }),
