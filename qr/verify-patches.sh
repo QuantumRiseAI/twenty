@@ -102,9 +102,11 @@ else
 fi
 
 # typeorm.module.ts builds its DataSource from typeORMCoreModuleOptions, and the
-# deferred migration runner spreads the injected core DataSource options, so both
-# inherit core.datasource's auth rather than calling the helper themselves.
-expected_pool_sites="$SRC/database/typeorm/core/core.datasource.ts
+# deferred migration runner and the 2.46 concurrent index util spread the
+# injected core DataSource options (extra included), so all three inherit
+# core.datasource's auth rather than calling the helper themselves.
+expected_pool_sites="$SRC/database/commands/upgrade-version-command/2-46/utils/create-core-index-concurrently.util.ts
+$SRC/database/typeorm/core/core.datasource.ts
 $SRC/database/typeorm/raw/raw.datasource.ts
 $SRC/database/typeorm/typeorm.module.ts
 $SRC/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/deferred-workspace-migration-action-runner.service.ts
