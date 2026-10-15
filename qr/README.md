@@ -8,8 +8,9 @@ A release tag is a point upstream has run its own full CI against, which is most
 
 ## What The Fork Carries
 
-Four changes, all in `twenty-server`.
-Each is inert by default, so an unconfigured deployment behaves exactly like upstream.
+Four changes in `twenty-server` and one in `twenty-front`.
+The server changes are inert by default, so an unconfigured deployment behaves exactly like upstream.
+The front-end change is copy only.
 
 * Entra ID authentication for Postgres (`PG_DATABASE_AUTH_MODE`)
   - Azure Database for PostgreSQL can have password auth disabled, leaving a short-lived Entra token as the only way in.
@@ -22,6 +23,11 @@ Each is inert by default, so an unconfigured deployment behaves exactly like ups
 * Configurable BullMQ queue retention (`QUEUE_COMPLETED_MAX_*`, `QUEUE_FAILED_MAX_*`)
   - Retention was hardcoded, and it is what decides how much of Redis the queue occupies.
   - A bulk import once filled a 0.5 GB Redis to 100%; being `NoEviction`, it stopped accepting writes rather than shedding keys.
+* Clearer 2FA code prompt at sign-in (`SignInUpTwoFactorAuthenticationVerification.tsx`, title in `SignInUp.tsx`)
+  - Upstream says "Verify code from the app" and "Paste the code below", which never says which app.
+  - The "Back" link is hidden for users who are already enrolled, since it led to the QR setup step they never saw.
+  - The text is English in every locale, since no translation exists for it.
+  - The committed catalogs in `twenty-front/src/locales` are left alone: the Dockerfile runs `lingui extract` and `compile` at build time, and upstream's own catalogs lag its source anyway.
 * `QR / Publish image` workflow (`.github/workflows/qr-publish-image.yaml`)
   - Builds `twenty-server` and pushes it to the production ACR.
   - Vendors `@azure/identity` at build time, because it is an optional peer dependency that `yarn workspaces focus` skips.
