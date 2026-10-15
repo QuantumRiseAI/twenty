@@ -113,7 +113,7 @@ export const SignInUp = () => {
     }
 
     if (signInUpStep === SignInUpStep.TwoFactorAuthenticationVerification) {
-      return t`Verify code from the app`;
+      return t`Enter your authentication code`;
     }
 
     if (isGlobalScope) {

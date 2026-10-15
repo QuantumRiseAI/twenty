@@ -8764,6 +8764,11 @@ msgstr "값 입력"
 msgid "Enter values, comma-separated"
 msgstr "값을 쉼표로 구분하여 입력하세요"
 
+#. js-lingui-id: f/GGcY
+#: src/pages/auth/SignInUp.tsx
+msgid "Enter your authentication code"
+msgstr ""
+
 #. js-lingui-id: GDMzJS
 #: src/modules/settings/admin-panel/components/SettingsAdminServerAdminAccess.tsx
 msgid "Enter your two-factor authentication code to confirm."
@@ -15971,6 +15976,11 @@ msgstr "설정 열기"
 msgid "Open side panel"
 msgstr "사이드 패널 열기"
 
+#. js-lingui-id: gud8vl
+#: src/modules/auth/sign-in-up/components/internal/SignInUpTwoFactorAuthenticationVerification.tsx
+msgid "Open the authenticator app you set up for Twenty (for example Microsoft Authenticator) and enter the 6-digit code it shows"
+msgstr ""
+
 #. js-lingui-id: sBd/cl
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
 msgid "Open Twenty's official ChatGPT integration for your workspace."
@@ -16408,11 +16418,6 @@ msgstr "호스팅된 이미지의 링크를 붙여넣으세요"
 #: src/modules/advanced-text-editor/extensions/blocks/HtmlNodeInlineEditor.tsx
 msgid "Paste or write your HTML here"
 msgstr "여기에 HTML을 붙여넣거나 작성하세요"
-
-#. js-lingui-id: cpStVq
-#: src/modules/auth/sign-in-up/components/internal/SignInUpTwoFactorAuthenticationVerification.tsx
-msgid "Paste the code below"
-msgstr "아래 코드를 붙여넣기"
 
 #. js-lingui-id: M01WeF
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
@@ -23539,11 +23544,6 @@ msgstr "확인됨"
 #: src/utils/title-utils.ts
 msgid "Verify"
 msgstr "확인"
-
-#. js-lingui-id: IoglDq
-#: src/pages/auth/SignInUp.tsx
-msgid "Verify code from the app"
-msgstr "앱에서 인증 코드 확인"
 
 #. js-lingui-id: zS/rMV
 #: src/pages/settings/profile/SettingsTwoFactorAuthenticationMethod.tsx

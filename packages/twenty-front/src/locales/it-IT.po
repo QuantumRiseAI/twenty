@@ -8764,6 +8764,11 @@ msgstr "Inserisci valore"
 msgid "Enter values, comma-separated"
 msgstr "Inserisci i valori, separati da virgola"
 
+#. js-lingui-id: f/GGcY
+#: src/pages/auth/SignInUp.tsx
+msgid "Enter your authentication code"
+msgstr ""
+
 #. js-lingui-id: GDMzJS
 #: src/modules/settings/admin-panel/components/SettingsAdminServerAdminAccess.tsx
 msgid "Enter your two-factor authentication code to confirm."
@@ -15971,6 +15976,11 @@ msgstr "Apri impostazioni"
 msgid "Open side panel"
 msgstr "Apri il pannello laterale"
 
+#. js-lingui-id: gud8vl
+#: src/modules/auth/sign-in-up/components/internal/SignInUpTwoFactorAuthenticationVerification.tsx
+msgid "Open the authenticator app you set up for Twenty (for example Microsoft Authenticator) and enter the 6-digit code it shows"
+msgstr ""
+
 #. js-lingui-id: sBd/cl
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
 msgid "Open Twenty's official ChatGPT integration for your workspace."
@@ -16408,11 +16418,6 @@ msgstr "Incolla un link a un’immagine ospitata"
 #: src/modules/advanced-text-editor/extensions/blocks/HtmlNodeInlineEditor.tsx
 msgid "Paste or write your HTML here"
 msgstr "Incolla o scrivi qui il tuo HTML"
-
-#. js-lingui-id: cpStVq
-#: src/modules/auth/sign-in-up/components/internal/SignInUpTwoFactorAuthenticationVerification.tsx
-msgid "Paste the code below"
-msgstr "Incolla il codice qui sotto"
 
 #. js-lingui-id: M01WeF
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
@@ -23541,11 +23546,6 @@ msgstr "Verificato"
 #: src/utils/title-utils.ts
 msgid "Verify"
 msgstr "Verifica"
-
-#. js-lingui-id: IoglDq
-#: src/pages/auth/SignInUp.tsx
-msgid "Verify code from the app"
-msgstr "Verifica il codice dall'app"
 
 #. js-lingui-id: zS/rMV
 #: src/pages/settings/profile/SettingsTwoFactorAuthenticationMethod.tsx

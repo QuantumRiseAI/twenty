@@ -8764,6 +8764,11 @@ msgstr "Введіть значення"
 msgid "Enter values, comma-separated"
 msgstr "Введіть значення, розділені комами"
 
+#. js-lingui-id: f/GGcY
+#: src/pages/auth/SignInUp.tsx
+msgid "Enter your authentication code"
+msgstr ""
+
 #. js-lingui-id: GDMzJS
 #: src/modules/settings/admin-panel/components/SettingsAdminServerAdminAccess.tsx
 msgid "Enter your two-factor authentication code to confirm."
@@ -15971,6 +15976,11 @@ msgstr "Відкрити налаштування"
 msgid "Open side panel"
 msgstr "Відкрити бічну панель"
 
+#. js-lingui-id: gud8vl
+#: src/modules/auth/sign-in-up/components/internal/SignInUpTwoFactorAuthenticationVerification.tsx
+msgid "Open the authenticator app you set up for Twenty (for example Microsoft Authenticator) and enter the 6-digit code it shows"
+msgstr ""
+
 #. js-lingui-id: sBd/cl
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
 msgid "Open Twenty's official ChatGPT integration for your workspace."
@@ -16408,11 +16418,6 @@ msgstr "Вставте посилання на розміщене зображе
 #: src/modules/advanced-text-editor/extensions/blocks/HtmlNodeInlineEditor.tsx
 msgid "Paste or write your HTML here"
 msgstr "Вставте або напишіть тут свій HTML"
-
-#. js-lingui-id: cpStVq
-#: src/modules/auth/sign-in-up/components/internal/SignInUpTwoFactorAuthenticationVerification.tsx
-msgid "Paste the code below"
-msgstr "Вставте код нижче"
 
 #. js-lingui-id: M01WeF
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
@@ -23541,11 +23546,6 @@ msgstr "Підтверджено"
 #: src/utils/title-utils.ts
 msgid "Verify"
 msgstr "Перевірити"
-
-#. js-lingui-id: IoglDq
-#: src/pages/auth/SignInUp.tsx
-msgid "Verify code from the app"
-msgstr "Перевірте код з додатку"
 
 #. js-lingui-id: zS/rMV
 #: src/pages/settings/profile/SettingsTwoFactorAuthenticationMethod.tsx

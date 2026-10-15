@@ -8764,6 +8764,11 @@ msgstr "輸入值"
 msgid "Enter values, comma-separated"
 msgstr "輸入值，以逗號分隔"
 
+#. js-lingui-id: f/GGcY
+#: src/pages/auth/SignInUp.tsx
+msgid "Enter your authentication code"
+msgstr ""
+
 #. js-lingui-id: GDMzJS
 #: src/modules/settings/admin-panel/components/SettingsAdminServerAdminAccess.tsx
 msgid "Enter your two-factor authentication code to confirm."
@@ -15948,6 +15953,11 @@ msgstr "開啟設定"
 msgid "Open side panel"
 msgstr "開啟側邊面板"
 
+#. js-lingui-id: gud8vl
+#: src/modules/auth/sign-in-up/components/internal/SignInUpTwoFactorAuthenticationVerification.tsx
+msgid "Open the authenticator app you set up for Twenty (for example Microsoft Authenticator) and enter the 6-digit code it shows"
+msgstr ""
+
 #. js-lingui-id: sBd/cl
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
 msgid "Open Twenty's official ChatGPT integration for your workspace."
@@ -16385,11 +16395,6 @@ msgstr "貼上託管圖片的連結"
 #: src/modules/advanced-text-editor/extensions/blocks/HtmlNodeInlineEditor.tsx
 msgid "Paste or write your HTML here"
 msgstr "在此貼上或撰寫您的 HTML"
-
-#. js-lingui-id: cpStVq
-#: src/modules/auth/sign-in-up/components/internal/SignInUpTwoFactorAuthenticationVerification.tsx
-msgid "Paste the code below"
-msgstr "在下方貼上代碼"
 
 #. js-lingui-id: M01WeF
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
@@ -23486,11 +23491,6 @@ msgstr "已驗證"
 #: src/utils/title-utils.ts
 msgid "Verify"
 msgstr "驗證"
-
-#. js-lingui-id: IoglDq
-#: src/pages/auth/SignInUp.tsx
-msgid "Verify code from the app"
-msgstr "驗證應用上的代碼"
 
 #. js-lingui-id: zS/rMV
 #: src/pages/settings/profile/SettingsTwoFactorAuthenticationMethod.tsx

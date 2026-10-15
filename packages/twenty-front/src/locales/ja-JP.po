@@ -8764,6 +8764,11 @@ msgstr "値を入力してください"
 msgid "Enter values, comma-separated"
 msgstr "値をカンマ区切りで入力"
 
+#. js-lingui-id: f/GGcY
+#: src/pages/auth/SignInUp.tsx
+msgid "Enter your authentication code"
+msgstr ""
+
 #. js-lingui-id: GDMzJS
 #: src/modules/settings/admin-panel/components/SettingsAdminServerAdminAccess.tsx
 msgid "Enter your two-factor authentication code to confirm."
@@ -15971,6 +15976,11 @@ msgstr "設定を開く"
 msgid "Open side panel"
 msgstr "サイドパネルを開く"
 
+#. js-lingui-id: gud8vl
+#: src/modules/auth/sign-in-up/components/internal/SignInUpTwoFactorAuthenticationVerification.tsx
+msgid "Open the authenticator app you set up for Twenty (for example Microsoft Authenticator) and enter the 6-digit code it shows"
+msgstr ""
+
 #. js-lingui-id: sBd/cl
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
 msgid "Open Twenty's official ChatGPT integration for your workspace."
@@ -16408,11 +16418,6 @@ msgstr "ホストされている画像へのリンクを貼り付けてくださ
 #: src/modules/advanced-text-editor/extensions/blocks/HtmlNodeInlineEditor.tsx
 msgid "Paste or write your HTML here"
 msgstr "ここにHTMLを貼り付けるか入力してください"
-
-#. js-lingui-id: cpStVq
-#: src/modules/auth/sign-in-up/components/internal/SignInUpTwoFactorAuthenticationVerification.tsx
-msgid "Paste the code below"
-msgstr "以下のコードを貼り付けてください"
 
 #. js-lingui-id: M01WeF
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
@@ -23539,11 +23544,6 @@ msgstr "確認済み"
 #: src/utils/title-utils.ts
 msgid "Verify"
 msgstr "確認"
-
-#. js-lingui-id: IoglDq
-#: src/pages/auth/SignInUp.tsx
-msgid "Verify code from the app"
-msgstr "アプリからのコードを確認"
 
 #. js-lingui-id: zS/rMV
 #: src/pages/settings/profile/SettingsTwoFactorAuthenticationMethod.tsx

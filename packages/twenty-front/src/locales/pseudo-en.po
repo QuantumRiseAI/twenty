@@ -8759,6 +8759,11 @@ msgstr ""
 msgid "Enter values, comma-separated"
 msgstr ""
 
+#. js-lingui-id: f/GGcY
+#: src/pages/auth/SignInUp.tsx
+msgid "Enter your authentication code"
+msgstr ""
+
 #. js-lingui-id: GDMzJS
 #: src/modules/settings/admin-panel/components/SettingsAdminServerAdminAccess.tsx
 msgid "Enter your two-factor authentication code to confirm."
@@ -15943,6 +15948,11 @@ msgstr ""
 msgid "Open side panel"
 msgstr ""
 
+#. js-lingui-id: gud8vl
+#: src/modules/auth/sign-in-up/components/internal/SignInUpTwoFactorAuthenticationVerification.tsx
+msgid "Open the authenticator app you set up for Twenty (for example Microsoft Authenticator) and enter the 6-digit code it shows"
+msgstr ""
+
 #. js-lingui-id: sBd/cl
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
 msgid "Open Twenty's official ChatGPT integration for your workspace."
@@ -16379,11 +16389,6 @@ msgstr ""
 #. js-lingui-id: YrKalV
 #: src/modules/advanced-text-editor/extensions/blocks/HtmlNodeInlineEditor.tsx
 msgid "Paste or write your HTML here"
-msgstr ""
-
-#. js-lingui-id: cpStVq
-#: src/modules/auth/sign-in-up/components/internal/SignInUpTwoFactorAuthenticationVerification.tsx
-msgid "Paste the code below"
 msgstr ""
 
 #. js-lingui-id: M01WeF
@@ -23480,11 +23485,6 @@ msgstr ""
 #. js-lingui-id: uSMfoN
 #: src/utils/title-utils.ts
 msgid "Verify"
-msgstr ""
-
-#. js-lingui-id: IoglDq
-#: src/pages/auth/SignInUp.tsx
-msgid "Verify code from the app"
 msgstr ""
 
 #. js-lingui-id: zS/rMV

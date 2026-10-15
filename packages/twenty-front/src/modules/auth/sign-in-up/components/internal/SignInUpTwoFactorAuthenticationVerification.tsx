@@ -8,6 +8,7 @@ import {
   useTwoFactorAuthenticationForm,
 } from '@/auth/sign-in-up/hooks/useTwoFactorAuthenticationForm';
 import { loginTokenState } from '@/auth/states/loginTokenState';
+import { qrCodeState } from '@/auth/states/qrCode';
 import {
   SignInUpStep,
   signInUpStepState,
@@ -23,6 +24,7 @@ import { OTPInput, type SlotProps } from 'input-otp';
 import { useState } from 'react';
 import { Controller } from 'react-hook-form';
 import { AppPath } from 'twenty-shared/types';
+import { isDefined } from 'twenty-shared/utils';
 import { MainButton, useToast } from 'twenty-ui/components';
 import { ClickToActionLink } from 'twenty-ui/primitives/navigation';
 import { themeCssVariables } from 'twenty-ui/theme';
@@ -174,6 +176,7 @@ export const SignInUpTOTPVerification = () => {
   const { readCaptchaToken } = useReadCaptchaToken();
   const { isCaptchaReady } = useCaptcha();
   const loginToken = useAtomStateValue(loginTokenState);
+  const qrCode = useAtomStateValue(qrCodeState);
   const setSignInUpStep = useSetAtomState(signInUpStepState);
   const { t } = useLingui();
 
@@ -218,7 +221,10 @@ export const SignInUpTOTPVerification = () => {
   return (
     <StyledForm onSubmit={form.handleSubmit(submitOTP)}>
       <StyledTwoFactorInstructions>
-        <Trans>Paste the code below</Trans>
+        <Trans>
+          Open the authenticator app you set up for Twenty (for example
+          Microsoft Authenticator) and enter the 6-digit code it shows
+        </Trans>
       </StyledTwoFactorInstructions>
       <StyledTwoFactorMainContent>
         {/* // oxlint-disable-next-line react/jsx-props-no-spreading */}
@@ -266,11 +272,13 @@ export const SignInUpTOTPVerification = () => {
         fullWidth
         disabled={isLoading}
       >{t`Submit`}</MainButton>
-      <StyledActionBackLinkContainer>
-        <ClickToActionLink onClick={handleBack}>
-          <Trans>Back</Trans>
-        </ClickToActionLink>
-      </StyledActionBackLinkContainer>
+      {isDefined(qrCode) && (
+        <StyledActionBackLinkContainer>
+          <ClickToActionLink onClick={handleBack}>
+            <Trans>Back</Trans>
+          </ClickToActionLink>
+        </StyledActionBackLinkContainer>
+      )}
     </StyledForm>
   );
 };
