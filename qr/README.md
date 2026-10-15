@@ -101,8 +101,11 @@ Before building, check the versions being crossed.
   Harmless in a normal upgrade, but they are what make a later replay of skipped steps hard (see [Recovering Skipped Steps](#recovering-skipped-steps)).
 
 ```sh
-git grep -nE "async up" -A12 twenty/v<version> -- 'packages/twenty-server/src/database/commands/upgrade-version-command/*/*instance*' \
-  | grep -E "DROP COLUMN|RENAME COLUMN"
+for f in $(git ls-tree -r --name-only twenty/v<version> packages/twenty-server/src/database/commands/upgrade-version-command/ \
+  | grep -E '/<crossed version dirs, e.g. 2-4[4-7]>/.*instance'); do
+  git show twenty/v<version>:$f \
+    | awk -v f="${f##*/}" '/async up\(/{u=1} /async down\(/{u=0} u && /DROP COLUMN|RENAME COLUMN/{print f": "$0}'
+done
 ```
 
 ### 2. Build The Image
