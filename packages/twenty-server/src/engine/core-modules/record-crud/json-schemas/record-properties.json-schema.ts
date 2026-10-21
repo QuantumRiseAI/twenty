@@ -190,11 +190,16 @@ export const generateRecordPropertiesJsonSchema = ({
         name: field.name,
       });
 
-      properties[joinColumnName] = referenceJsonSchemaDefinition({
-        definitions,
-        name: 'UuidValue',
-        schema: SHARED_VALUE_JSON_SCHEMAS.UuidValue,
-      });
+      properties[joinColumnName] = {
+        ...(isNonEmptyString(field.description) && {
+          description: field.description,
+        }),
+        ...referenceJsonSchemaDefinition({
+          definitions,
+          name: 'UuidValue',
+          schema: SHARED_VALUE_JSON_SCHEMAS.UuidValue,
+        }),
+      };
 
       if (isRequired) {
         required.push(joinColumnName);

@@ -20,6 +20,7 @@ const FIELDS = [
     name: 'company',
     type: FieldMetadataType.RELATION,
     isNullable: false,
+    description: 'The client that signs and pays',
     settings: { relationType: RelationType.MANY_TO_ONE },
   }),
   getToolSchemaFieldMock({
@@ -40,7 +41,10 @@ describe('generateRecordPropertiesJsonSchema', () => {
       properties: {
         name: { description: 'Deal name', type: 'string' },
         amount: { $ref: '#/$defs/CurrencyValue' },
-        companyId: { $ref: '#/$defs/UuidValue' },
+        companyId: {
+          description: 'The client that signs and pays',
+          $ref: '#/$defs/UuidValue',
+        },
       },
       required: ['name', 'companyId'],
     });
